@@ -5,7 +5,6 @@ import kfp
 # Type annotations for the component artifacts
 # For building components
 
-package_path = 'pipeline_amazon.yaml'
 
 EXPERIMENT_NAME = 'stress_tests'
 
@@ -32,22 +31,41 @@ def run_exp(job_index='-run', params=None, pipeline_filename=None, pipeline_pack
     )
 
 
+# five components
+
+package_path = 'pipeline_five.yaml'
+
+params = {"url": "https://archive.ics.uci.edu/ml/machine-learning-databases/00242/ENB2012_data.xlsx",
+          'num_samples': -1}
+
+# Stress serial jobs: uncomment
+for ind, num_samples in enumerate(range(100, 110)):
+    params['num_samples'] = num_samples
+    run_exp(
+        job_index = f"-index-{ind}", params = params, pipeline_filename = None,
+        pipeline_package_path = package_path
+    )
+
+# amazon
+package_path = 'pipeline_amazon.yaml'
 params = {'epochs': 100, 'batch_size': 32, 'num_samples': -1, 'learning_rate': 1e-4}
+
+run_exp(job_index = f"-full", params = params, pipeline_package_path = package_path)
 
 # Stress serial jobs examples
 
-# Run network components
 initStress = True
 
+params['num_samples'] = -1
+
 if initStress:
-    for learning_rate in [1e-1, 1e-2, 1e-3, 1e-4]:
+    for learning_rate in [1e-3, 1e-4]:
         params['learning_rate'] = learning_rate
         run_exp(params = params, pipeline_package_path = package_path)
 else:
     # stress test
-    maxJobs = 20
+    maxJobs = 10
     params['learning_rate'] = 1e-3
-    params['num_samples'] = 1000
 
 
     for ind, batch_size in enumerate(range(1, 1 + maxJobs)):
