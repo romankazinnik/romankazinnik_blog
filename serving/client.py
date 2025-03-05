@@ -25,7 +25,37 @@ def submit_requests_sequentially():
         else:
             print(f"Request {i} did not complete in time.")
 
+def retrive_completed_requests():
+    results = []
+    
+    # Submitting 100 tasks sequentially
+    for i in range(1, 10):
+        print(f"Submitting request {i}...")
+        result = process_data.apply_async((f"Task-{i}",))  # Submit the task to the queue
+        results.append(result)
+        time.sleep(0.1)  # Simulate a delay between requests (0.1 seconds)
+
+    # Wait for up to 5 seconds to check if tasks have finished
+    start_time = time.time()
+    completed = 0
+
+    while completed < len(results) and (time.time() - start_time) < 5:
+        print(f"Checking status of {completed}/{len(results)} tasks...")
+        for i, result in enumerate(results):
+            if result.ready() and result.successful():
+                completed += 1
+                print(f"Task {i+1} completed. Result: {result.get()}")
+            elif result.failed():
+                print(f"Task {i+1} failed.")
+        
+        time.sleep(0.5)  # Sleep for 0.5 seconds before checking again
+
+    if completed < len(results):
+        print(f"Not all tasks completed within 5 seconds.")
+    else:
+        print(f"All tasks completed.")
 
 if __name__ == "__main__":
     submit_requests_sequentially()
+    retrive_completed_requests()
 
