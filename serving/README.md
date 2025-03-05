@@ -45,4 +45,4 @@ python client.py
 
 <img src="celery.png" width="900" height="150" alt="message queue service">
 
-<img src="client1.png" width="700" height="150" alt="message queue client">
+<img src="client_1_2.png" width="700" height="400" alt="message queue client">
