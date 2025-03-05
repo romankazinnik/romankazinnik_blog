@@ -1,4 +1,4 @@
-# Celery Sequential Task Processing 101 Example
+# Celery Sequential Task Processing Example
 
 This example demonstrates how to use Celery with Redis as the message broker to submit tasks sequentially, check for their completion, and retrieve results within a given time frame.
 
