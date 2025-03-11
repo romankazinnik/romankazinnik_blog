@@ -36,7 +36,10 @@ uv venv --python 3.11 uv_lora
 
 source uv_lora/bin/activate
 
-uv pip install -r requirements_lora.txt 
+uv pip install -r requirements_pip3.txt 
+
+(uv pip freeze > requirements_pip3.txt)
+
 
 Alternatively, install the dependencies manually:
 
@@ -67,7 +70,7 @@ https://colab.research.google.com/github/jkyamog/ml-experiments/blob/main/fine-t
 
 ### Classification: 100% accuracy after 10 epochs
 
-<img src="e10f1.png" width="400" height="600" alt="Epoch 1 metrics">
+<img src="e10f1.png" width="400" height="700" alt="Epoch 1 metrics">
 
 **High accuracy for 3-class confusion matrix for training, evaluation, and test (unseen during trainig) datasets.**
 
@@ -80,7 +83,23 @@ https://colab.research.google.com/github/jkyamog/ml-experiments/blob/main/fine-t
 ### Requirements
 * A GPU with 12GB VRAM or more.  Nvidia/L4 orbetter would work
 
-### Big Picture Overview of Parameter Efficient Fine Tuning Methods like LoRA and QLoRA Fine Tuning for Sequence Classification
+## More information 
+
+1. **Data Generation**: 100 data examples are synthetically generated from actual 15 examples and usingf the class definitons iun a sigle prompt. 
+
+
+2. **Model Implementation**: classification and causal models that can determine if a prompt is simple or complex with fine-tuning
+
+3. **Evaluation**: Classification custom model uses cross-entropy loss. 
+
+4. **Technical design**: here is a high-level overview of the implementation of causal and classification models with fine-tuning and
+trying four different foundational models (google, meta, mistral, misrosoft) that all produce equivalent accuracies.  Potential improvements include using smarter data generation, and training on CPU since the data is very small. 
+
+### synthetic dataset: unity_data.py 
+
+### Evaluation methodology: splitting into train, eval, and test datasets and using a 3-class confusion matrix.
+
+## More information about design - or: Big Picture Overview of Parameter Efficient Fine Tuning Methods like LoRA Fine Tuning for Sequence Classification
 
 **Fine-tuning**
 - LLMs are pre-trained on vast amounts of data for broad language understanding.
