@@ -25,12 +25,14 @@ sudo chmod +x /usr/local/bin/docker-compose
 
 docker-compose
 
+
 The FastAPI server is running on port 8000 localhost:8000/docs has complete description of endpoints with example requests and responses
 
 
 sudo snap install redis
 
 sudo apt install redis-tools
+
 
 
 redis-server
