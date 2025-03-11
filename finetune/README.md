@@ -59,29 +59,26 @@ https://colab.research.google.com/github/jkyamog/ml-experiments/blob/main/fine-t
 
 ## Demo screenshots
 
-### Classification: Epoch 1 metrics
+### Classification: 1st epoch
 
-#![alt text](image.png)
 <img src="e1.png" width="800" height="200" alt="Epoch 1 metrics">
 
-**First epoch training loss, evaluation loss and accuracy: notice some variance in training and evaluation datasets. The dataset is too small for
-this variance resolving.**
+**Dataset is very small (100 samples) and produces variance .**
 
-### Classification: 3-class confusion matrix for training, evaluation, and test (unseen during trainig) datasets
+### Classification: 100% accuracy after 10 epochs
 
 <img src="e10f1.png" width="400" height="600" alt="Epoch 1 metrics">
 
-**First epoch training loss, evaluation loss and accuracy: notice some variance in training and evaluation datasets. The dataset is too small for
-this variance resolving.**
+**High accuracy for 3-class confusion matrix for training, evaluation, and test (unseen during trainig) datasets.**
 
 ### Causal Language Model: prompt sentence completion
 
 <img src="causal10.png" width="700" height="150" alt="Epoch 1 metrics">
 
-**10 epochs (training loss < 0.4).**
+**10 epochs.**
 
 ### Requirements
-* A GPU with enough memory, 12GB VRAM or more.  Nvidia/L4 orbetter would work
+* A GPU with 12GB VRAM or more.  Nvidia/L4 orbetter would work
 
 ### Big Picture Overview of Parameter Efficient Fine Tuning Methods like LoRA and QLoRA Fine Tuning for Sequence Classification
 
