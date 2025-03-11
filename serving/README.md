@@ -37,7 +37,7 @@ source uvpy311/bin/activate
 uv pip install celery redis
 redis-server 
 redis-cli
-uv run celery -A app worker --loglevel=info
+uv run celery -A app1 worker --loglevel=info
 python client.py
 ```
 
