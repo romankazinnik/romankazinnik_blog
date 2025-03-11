@@ -1,0 +1,47 @@
+from huggingface_hub import InferenceClient
+from diffusers import AutoPipelineForText2Image,StableDiffusionPipeline
+from diffusers.utils import load_image
+import torch
+from diffusers import DiffusionPipeline
+
+if False:
+    client = InferenceClient(
+        provider="fal-ai",
+        api_key="hf_xxxxxxxxxxxxxxxxxxxxxxxx"
+    )
+
+    # output is a PIL.Image object
+    image = client.text_to_image(
+        "Astronaut riding a horse",
+        model="stabilityai/stable-diffusion-3.5-medium"
+    )
+
+def run_ai(prompt: str, filename: str)->dict:
+    if False:
+        # cpu only
+        pipe = DiffusionPipeline.from_pretrained("stabilityai/sdxl-turbo")
+        
+        # prompt = "Astronaut in a jungle, cold color palette, muted colors, detailed, 8k"
+        
+        image = pipe(prompt,num_inference_steps=2).images[0]
+    else:
+        # Load the pipeline
+        # pipeline = AutoPipelineForText2Image.from_pretrained("stabilityai/sdxl-turbo", torch_dtype=torch.float16, variant="fp16")
+        # Load the Stable Diffusion pipeline
+        pipeline = StableDiffusionPipeline.from_pretrained("stabilityai/stable-diffusion-2-1-base") # 5GB
+        
+        # Move the pipeline to GPU if available
+        pipeline = pipeline.to("cuda" if torch.cuda.is_available() else "cpu")
+        # Generate the image
+        image = pipeline(prompt=prompt,num_inference_steps=10, guidance_scale=0.0).images[0]
+    # Save the image
+    image.save(filename)
+    return {'filename':filename}
+
+# uv pip install transformers torch torchaudio diffusers accelerate pillow
+if __name__ == "__main__":
+    print("start process")
+    # Define the prompt
+    prompt = "A cinematic photo of a surfer riding a giant wave at sunset"
+    result = run_ai(prompt, filename="surfer_wave.png")
+    print(f"result: {result}")

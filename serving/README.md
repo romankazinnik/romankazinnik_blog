@@ -1,48 +1,85 @@
-# Celery Sequential Task Processing Example
 
-This example demonstrates how to use Celery with Redis as the message broker to submit tasks sequentially, check for their completion, and retrieve results within a given time frame.
+# Instructions
 
-## Project Structure
+uv venv --python 3.11 uvmq
 
-- `app.py`: Contains the Celery app configuration and the `process_data` task.
-- `client.py`: Submits tasks sequentially and checks for their completion within 5 seconds.
-  
-## Prerequisites
-
-1. Install the required dependencies.
-
-2. Ensure that Redis is installed and running locally as it will be used as the message broker.
-
-3. Celery app configuration (app.py):
-
-The Celery app is configured to use Redis as the message broker.
-A process_data task simulates a data processing task that sleeps for 2 seconds before completing.
-
-
-4. Client application (client.py):
-
-The client submits five tasks sequentially with a 1-second delay between each.
-After submitting each task, the script waits for the task to complete (or checks every 0.5 seconds for up to 5 seconds).
-If a task is completed within 5 seconds, its result is retrieved using result.get().
-If the task is not completed within 5 seconds, a message is displayed indicating the task did not complete in time.
-
-The Celery worker processes tasks as they are submitted and prints messages when tasks are being processed.
-
-5. Instructions
-
-```bash
-sudo apt install redis-server
 uv venv --python 3.11 uvpy311
-source uvpy311/bin/activate
-uv pip install celery redis
-redis-server 
+
+uv pip install -r requirements.txt
+
+uv pip sync requirements.txt
+
+sudo apt install redis-server
+
+--
+
+systemctl --user start docker-desktop
+
+sudo apt-get install docker-compose-plugin
+
+docker compose version
+
+sudo curl -SL https://github.com/docker/compose/releases/download/v2.33.1/docker-compose-linux-x86_64 -o /usr/local/bin/docker-compose
+
+sudo chmod +x /usr/local/bin/docker-compose
+
+docker-compose
+
+==
+The FastAPI server is running on port 8000 localhost:8000/docs has complete description of endpoints with example requests and responses
+==
+
+sudo snap install redis
+
+sudo apt install redis-tools
+
+==
+
+redis-server
+
 redis-cli
-uv run celery -A app1 worker --loglevel=info
-python client.py
-```
 
-5. Results:
+--
 
-<img src="celery.png" width="900" height="150" alt="message queue service">
+cd ~/PycharmProjects/comfyui/celery-main;source uvmq/bin/activate;
 
-<img src="client_1_2.png" width="700" height="400" alt="message queue client">
+--
+
+# development
+
+uv run uvicorn api.api:app --host 0.0.0.0 --port 8000 --reload
+
+uv run celery -A worker.worker worker --loglevel=info --concurrency=1000 --pool=gevent
+
+====
+
+# production
+
+uv run gunicorn api.api:app -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000
+
+===
+
+http://localhost:8000/docs#/default/process_urls_process_post
+
+
+
+http://192.168.7.230:8000/docs
+
+===========
+
+============
+
+RIDER
+
+http://localhost:8001/uber_rider
+
+cd ~/PycharmProjects/comfyui/rider_main
+
+uv run celery -A worker.worker_rider worker --loglevel=info --concurrency=1000 --pool=gevent
+
+
+GOOGLE CLOUD
+    # gcloud auth application-default login
+    # sudo apt-get install -y google-cloud-sdk
+    # uv pip install google-cloud-storage google
+    # gsutil ls gs://blog_inference
