@@ -1,5 +1,20 @@
+# Market AI: Democratizing GPU Access
 
-# Instructions
+## Short Description
+
+### Market AI diagram
+
+<img src="claude2.png" width="500" height="300" alt="Epoch 1 metrics">
+
+**Market AI connects GPU owners with AI developers to maximize resource utilization and reduce costs.**
+
+Market AI is a peer-to-peer platform that connects GPU owners with AI developers to maximize resource utilization and reduce costs. By allowing GPU owners to monetize their idle computing power and providing AI developers with affordable access to computational resources, Market AI creates a democratized marketplace for AI development. The platform handles subscriptions, resource allocation, security, and payment processing, while optionally collecting input/output data for model improvement and fine-tuning.
+
+<img src="chatgpt.png" width="500" height="400" alt="Epoch 1 metrics">
+
+**text2image.**
+
+## Instructions
 
 ## Install dependencies
 
@@ -89,5 +104,5 @@ gsutil ls gs://blog_inference
 
 <img src="local_api.png" width="800" height="300" alt="Epoch 1 metrics">
 
-**Celery worker returns statuses of all the tasks in the batch.**
+**Fast API recieves gcs links from remote API server and downloads them to local storage.**
 
