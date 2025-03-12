@@ -47,9 +47,7 @@ def calculate_class_weights(df_train):
     class_weights=class_weights/class_weights.sum()
     return class_weights
 
-def split_data(train_df):
-    train_size = 0.8 # 80% of data
-    test_size = 0.2  # 20% of data
+def split_data(train_df, train_size=0.8, test_size=0.2):
     df_train, df_val2 = train_test_split(train_df, train_size=train_size, test_size=test_size, random_state=42)
 
     # Split the temporary data into validation and test sets

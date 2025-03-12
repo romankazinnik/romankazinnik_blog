@@ -91,7 +91,7 @@ https://colab.research.google.com/github/jkyamog/ml-experiments/blob/main/fine-t
 
 https://colab.research.google.com/github/jkyamog/ml-experiments/blob/main/fine-tuning-qlora/LLAMA_3_Fine_Tuning_for_Sequence_Classification.ipynb
 
-## Demo screenshots
+## Demo screenshots: small 100 examples dataset
 
 ### Classification: 1st epoch
 
@@ -101,7 +101,7 @@ https://colab.research.google.com/github/jkyamog/ml-experiments/blob/main/fine-t
 
 ### Classification: 100% accuracy after 10 epochs
 
-<img src="e10f1.png" width="400" height="700" alt="Epoch 1 metrics">
+<img src="e10f1.png" width="600" height="1000" alt="Epoch 1 metrics">
 
 **High accuracy for 3-class confusion matrix for training, evaluation, and test (unseen during trainig) datasets.**
 
@@ -110,6 +110,14 @@ https://colab.research.google.com/github/jkyamog/ml-experiments/blob/main/fine-t
 <img src="causal10.png" width="700" height="150" alt="Epoch 1 metrics">
 
 **10 epochs.**
+
+## Demo screenshots: large 37K examples "kaggle us patent phrase matching" dataset
+
+### Classification 3 epochs
+
+<img src="large30Kf1.png" width="500" height="1000" alt="Epoch 1 metrics">
+
+**High accuracy 5-class confusion matrix for training, evaluation, and test (unseen during trainig) datasets.**
 
 ### Requirements
 * A GPU with 12GB VRAM or more.  Nvidia/L4 orbetter would work

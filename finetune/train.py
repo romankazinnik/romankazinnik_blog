@@ -31,13 +31,23 @@ from transformers import (
 )
 from pathlib import Path
 
-from data import preprocess_dataset, calculate_class_weights
+from data import preprocess_dataset, calculate_class_weights, split_data
 
 MODELS = {'mistral': "mistralai/Mistral-7B-v0.1", "lama": "TinyLlama/TinyLlama-1.1B-Chat-v1.0", "microsoft": "microsoft/phi-2", "google": "google/gemma-2b"}
-MODEL_KEY = "microsoft"
+MODEL_KEY = "google"
 model_name = MODELS[MODEL_KEY]
 OUTPUT_DIR = f"unity-prompt-classifier-{MODEL_KEY}"
-
+EVAL_STEPS = 50
+LOGGING_STEPS = 5
+SAVING_STEPS = 100
+NUM_TRAINING_EPOCHS = 10
+BATCH_SIZE = 4
+GRAD_ACCUM_SIZE = 1
+LEARNING_RATE = 1e-4
+PREDICTION_BATCH_SIZE = 1
+LORA_CONFIG_R = 16
+LORA_CONFIG_ALPHA = 8
+LORA_CONFIG_DROPOUT = 0.2
 quantization_config = BitsAndBytesConfig(
     load_in_4bit = False, # True, # enable 4-bit quantization
     bnb_4bit_quant_type = 'nf4', # information theoretically optimal dtype for normally distributed weights
@@ -46,13 +56,13 @@ quantization_config = BitsAndBytesConfig(
 )
 
 
-def model_train(category_map):
+def model_train(category_map, lora_config_r = 16, lora_config_alpha = 8, lora_config_dropout = 0.2  ):
 
     lora_config = LoraConfig(
-        r = 16, # the dimension of the low-rank matrices
-        lora_alpha = 8, # scaling factor for LoRA activations vs pre-trained weight activations
+        r = lora_config_r, # the dimension of the low-rank matrices
+        lora_alpha = lora_config_alpha, # scaling factor for LoRA activations vs pre-trained weight activations
         target_modules = ['q_proj', 'k_proj', 'v_proj', 'o_proj'],
-        lora_dropout = 0.2, # 0.05, # dropout probability of the LoRA layers
+        lora_dropout = lora_config_dropout, # 0.05, # dropout probability of the LoRA layers
         bias = 'none', # wether to train bias weights, set to 'none' for attention layers
         task_type = 'SEQ_CLS'
     )
@@ -104,7 +114,8 @@ def model_train(category_map):
 
 
 def define_custom_trainer(model, tokenizer, collate_fn, class_weights):
-    """### Define custom trainer with classweights
+    """### Define custom trainer with classwei    # Shuffle the DataFrame rows
+    train_df = train_df.sample(frac=1, random_state=42).reset_index(drop=True)ghts
     * We will have a custom loss function that deals with the class weights and have class weights as additional argument in constructor
     """
 
@@ -189,22 +200,22 @@ def define_custom_trainer(model, tokenizer, collate_fn, class_weights):
 
     training_args = TrainingArguments(
         output_dir = 'sequence_classification',
-        learning_rate = 1e-4,
-        per_device_train_batch_size = 4,
-        per_device_eval_batch_size = 4,
-        gradient_accumulation_steps=1,
-        num_train_epochs = 10,
+        learning_rate = LEARNING_RATE,
+        per_device_train_batch_size = BATCH_SIZE,
+        per_device_eval_batch_size = BATCH_SIZE,
+        gradient_accumulation_steps=GRAD_ACCUM_SIZE,
+        num_train_epochs = NUM_TRAINING_EPOCHS,
         weight_decay = 0.01,
         load_best_model_at_end = True,
         push_to_hub=False,
         #label_names=["labels"],
         report_to="none",                 # Disable wandb or other reporting
         # remove_unused_columns=False,      # PEFT models need this    
-        save_steps=100,
-        logging_steps=5,
+        save_steps=SAVING_STEPS,
+        logging_steps=LOGGING_STEPS,
         evaluation_strategy="steps", # 'epoch',
         save_strategy = "steps", # 'epoch',
-        eval_steps=50,
+        eval_steps=EVAL_STEPS,
         # fp16=False,                       # Disable mixed precision training on CPU
         no_cuda=False, # Explicitly specifying we want GPU or CPU
         # Arguments
@@ -275,8 +286,100 @@ def get_performance_metrics(df_test, category_map):
   return 
 
 
+
+def create_dataset_from_kaggle_dataset(kaggle_user, kaggle_key):
+    """
+    https://www.kaggle.com/competitions/us-patent-phrase-to-phrase-matching/overview
+    """
+    path = Path('us-patent-phrase-to-phrase-matching')
+# cat ~/Downloads/kaggle.json
+    userdata_get = {"kaggle_user":kaggle_user,"kaggle_key":kaggle_key}
+    creds = '{"username":"' + userdata_get['kaggle_user'] + '","key":"' + userdata_get['kaggle_key'] + '"}'
+    iskaggle = os.environ.get('KAGGLE_KERNEL_RUN_TYPE', '')
+    cred_path = Path('~/.kaggle/kaggle.json').expanduser()
+    if not cred_path.exists():
+        cred_path.parent.mkdir(exist_ok=True)
+        cred_path.write_text(creds)
+        cred_path.chmod(0o600)
+
+    if not iskaggle and not path.exists():
+        import zipfile,kaggle
+        kaggle.api.competition_download_cli(str(path))
+        zipfile.ZipFile(f'{path}.zip').extractall(path)
+
+    df = pd.read_csv(path/'train.csv')
+    
+    df['score_ascat']=df['score'].astype('category')
+    df['score_category']=df['score_ascat'].cat.codes
+    df.describe(include='object')
+
+    category_map = {code: category for code, category in enumerate(df['score_ascat'].cat.categories)}
+    
+    df_test = pd.read_csv(path/'test.csv')
+    
+    print(f"\n *************** df = {df.shape} df_test = {df_test.shape}")
+
+    def generate_features(df):
+        df['input'] = 'TEXT1: ' + df.context + '; TEXT2: ' + df.target + '; ANC1: ' + df.anchor
+        if 'score' in df.columns:
+            df['score_ascat']=df['score'].astype('category')
+            df['score_category']=df['score_ascat'].cat.codes
+        else:
+            df['score_category'] = pd.NA
+
+    df_train = pd.read_csv(path/'train.csv')
+    
+    generate_features(df_train)
+    
+    # T: Index(['id', 'anchor', 'target', 'context'], dtype='object')
+    # Index(['id', 'anchor', 'target', 'context', 'score', 'input', 'score_ascat',
+    #   'score_category'],
+    # dtype='object')
+    df_train = df_train.drop(['score', 'score_ascat'], axis=1).reset_index(drop=True)
+    #x(['id', 'anchor', 'target', 'context', 'input', 'score_category'
+    col_to_delete = ['id', 'anchor', 'context', 'target']
+    df_train = df_train.drop(col_to_delete, axis=1).reset_index(drop=True)
+    #x(['input', 'score_category']
+
+    # 'input' and 'score_category' are the only columns we need for training    
+    return df_train, category_map
+
+import sys
+def process_strings(string1, string2):
+    result = string1 + " " + string2
+    
+    # Print the result
+    print(f"Processed result: {result}")
+    
+    return result
 if __name__ == "__main__":
-    df_train, df_val, df_val_test, category_map, category_map_from_index = preprocess_dataset()
+    print("Usage: python train.py <kaggle_user> <kaggle_key>")
+    if len(sys.argv) == 3:
+        kaggle_user = sys.argv[1]
+        kaggle_key = sys.argv[2]        
+        # Larger dataset 34K rows
+        # 'input' and 'score_category' are the only columns we need for training
+        train_df, category_map_from_index = create_dataset_from_kaggle_dataset(kaggle_user, kaggle_key)
+        # Shuffle the DataFrame rows
+        train_df = train_df.sample(frac=1, random_state=42).reset_index(drop=True)
+
+        category_map = {category:index for index, category in category_map_from_index.items()}
+        df_train, df_val, df_val_test = split_data(train_df, train_size=0.9, test_size=0.1)
+        EVAL_STEPS = 100
+        LOGGING_STEPS = 20
+        SAVING_STEPS = 100
+        NUM_TRAINING_EPOCHS = 3
+        BATCH_SIZE = 32 # 16
+        GRAD_ACCUM_SIZE = 1
+        LEARNING_RATE = 1e-3
+        PREDICTION_BATCH_SIZE = 32     
+        LORA_CONFIG_R = 32
+        LORA_CONFIG_ALPHA = 16
+        LORA_CONFIG_DROPOUT = 0.05
+    else:    
+        # Smaller dataset 100 rows
+        df_train, df_val, df_val_test, category_map, category_map_from_index = preprocess_dataset()
+    
     class_weights = calculate_class_weights(df_train)
 
     # Converting pandas DataFrames into Hugging Face Dataset objects:
@@ -288,7 +391,7 @@ if __name__ == "__main__":
         'train': dataset_train,
         'val': dataset_val,
     })
-    tokenized_datasets, model, tokenizer, collate_fn = model_train(category_map)
+    tokenized_datasets, model, tokenizer, collate_fn = model_train(category_map, lora_config_r=LORA_CONFIG_R, lora_config_alpha=LORA_CONFIG_ALPHA, lora_config_dropout=LORA_CONFIG_DROPOUT)
     trainer = define_custom_trainer(model, tokenizer, collate_fn, class_weights)
     train_result = trainer.train()
 
@@ -296,7 +399,7 @@ if __name__ == "__main__":
 
     for df, df_name in zip([df_val, df_val_test, df_train], ["df_val", "df_val_test", "df_train"]):
         print(f"\n *************** {df_name} = {df.shape}\n")
-        make_predictions(tokenizer, model, category_map_from_index, df)
+        make_predictions(tokenizer, model, category_map_from_index, df, batch_size=PREDICTION_BATCH_SIZE)
         get_performance_metrics(df, category_map)
 
     print(f" ================== save weights")
