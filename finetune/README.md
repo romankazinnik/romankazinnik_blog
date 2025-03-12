@@ -6,50 +6,81 @@
 
 ```bash
 python3 train.py 
-
 python3 inference.py 
 ```
-### Classify text with causal language model, fine-tuning and prompt engineering:
 
+### Classify text with causal language model
 ```bash
 python3 unity_train.py 
-
 python3 unity_inference.py 
 ```
 
-## Fine-tuning for Text Classification:
+## Approaches
 
-### Approach 1. Text Generation with Classification Label as part of text
+### 1. Text Generation with Classification Label
+The model generates text that includes the classification label as part of the output.
 
-Train the model to generate text that naturally appends the classification label at the end.
+### 2. Sequence Classification Head
+Uses a sequence classification head (linear layer) on top of the LLaMa Model transformer, similar to GPT-2.
+- **Training Objective**: Minimize cross-entropy loss between predicted and actual labels.
 
-### Approach 2. Sequence Classification Head
-
-Add a sequence classification head (linear layer) on top of the LLaMa Model transformer. This setup is similar to GPT-2 and focuses on classifying the sentiment based on the last relevant token in the sequence.
-- **Training Objective**: Minimize cross-entropy loss between the predicted and the actual labels.
-
-## Environment setup instructions
+## Environment Setup
 
 ```bash
-
+# Create and activate virtual environment
 uv venv --python 3.11 uv_lora
-
 source uv_lora/bin/activate
 
+# Install dependencies from requirements file
 uv pip install -r requirements_pip3.txt 
 
-(uv pip freeze > requirements_pip3.txt)
-
-
-Alternatively, install the dependencies manually:
-
-uv pip install "torch==2.2.2" tensorboard  
-
- uv pip install --upgrade "transformers==4.40.0" "datasets==2.18.0" "accelerate==0.29.3" "evaluate==0.4.1" "bitsandbytes==0.43.1" "huggingface_hub==0.22.2
-" "trl==0.8.6" "peft==0.10.0" "numpy==1.26.4" "pandas==2.2.2"  "scikit-learn==1.6.1" 
-
+# Alternative: Manual installation
+uv pip install "torch==2.2.2" tensorboard
+uv pip install --upgrade "transformers==4.40.0" "datasets==2.18.0" "accelerate==0.29.3" "evaluate==0.4.1" "bitsandbytes==0.43.1" "huggingface_hub==0.22.2" "trl==0.8.6" "peft==0.10.0" "numpy==1.26.4" "pandas==2.2.2" "scikit-learn==1.6.1"
 uv pip install --force-reinstall -v "triton==3.1.0"
 ```
+
+## Implementation Details
+
+### Dataset
+- 100 synthetic examples generated from 15 real examples using class definitions
+- Split into training, evaluation, and test sets
+
+### Models
+- Implemented both classification and causal language models
+- Tested four foundational models (Google, Meta, Mistral, Microsoft) with equivalent accuracy
+- Uses cross-entropy loss for classification
+
+### Hardware Requirements
+- GPU with 12GB VRAM or more (e.g., NVIDIA L4 or better)
+
+## Results
+
+### Classification Performance
+- Achieved 100% accuracy after 10 epochs on a 3-class problem
+- High accuracy across training, evaluation, and test datasets
+- Note: Small dataset (100 samples) may cause variance
+
+### Causal Language Model
+Successfully completed prompt sentences after 10 epochs of training
+
+## Parameter Efficient Fine-Tuning (PEFT)
+
+### Overview
+- Uses LoRA (Low-Rank Adaptation) for efficient fine-tuning
+- Modifies only a subset of parameters, reducing memory and computational requirements
+
+### QLoRA Enhancements
+- 4-bit quantization using NormalFloat (NF4)
+- 16-bit precision for low-rank adapters
+- Double quantization for memory optimization
+- Efficient memory management with paged optimizers
+
+### Mathematical Foundation
+For weight matrix $W$, LoRA uses the approximation:
+$W = W_0 + BA$
+where $W_0$ is the original weight matrix, and $BA$ represents the low-rank modification.
+
 ## References
 
 https://arxiv.org/abs/2305.14314
@@ -64,9 +95,9 @@ https://colab.research.google.com/github/jkyamog/ml-experiments/blob/main/fine-t
 
 ### Classification: 1st epoch
 
-<img src="e1.png" width="800" height="200" alt="Epoch 1 metrics">
+<img src="e1.png" width="900" height=200 alt="Epoch 1 metrics">
 
-**Dataset is very small (100 samples) and produces variance .**
+**Dataset is very small (100 samples) and reveals initial variance .**
 
 ### Classification: 100% accuracy after 10 epochs
 
@@ -97,9 +128,11 @@ trying four different foundational models (google, meta, mistral, misrosoft) tha
 
 ### synthetic dataset: unity_data.py 
 
-### Evaluation methodology: splitting into train, eval, and test datasets and using a 3-class confusion matrix.
+### Evaluation methodology: 
 
-## More information about design - or: Big Picture Overview of Parameter Efficient Fine Tuning Methods like LoRA Fine Tuning for Sequence Classification
+Splitting into train, eval, and test datasets and using a 3-class confusion matrix.
+
+## More information about design - or - Big Picture Overview of Parameter Efficient Fine Tuning Methods like LoRA Fine Tuning for Sequence Classification
 
 **Fine-tuning**
 - LLMs are pre-trained on vast amounts of data for broad language understanding.
@@ -114,7 +147,7 @@ trying four different foundational models (google, meta, mistral, misrosoft) tha
 - Adapters learn task nuances while keeping the majority of the LLM unchanged, minimizing overhead.
 
 **QLoRA: Compression and Speed**
-- **Quantized LoRA (QLoRA):** Extends LoRA by quantizing the model’s weights, further reducing size and enhancing speed.
+- **Quantized LoRA (QLoRA):** Extends LoRA by quantizing the model's weights, further reducing size and enhancing speed.
 - **Innovations in QLoRA:**
   1. **4-bit Quantization:** Uses a 4-bit data type, NormalFloat (NF4), for optimal weight quantization, drastically reducing memory usage.
   2. **Low-Rank Adapters:** Fine-tuned with 16-bit precision to effectively capture task-specific nuances.
