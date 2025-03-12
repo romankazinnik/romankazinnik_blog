@@ -369,13 +369,13 @@ if __name__ == "__main__":
         LOGGING_STEPS = 20
         SAVING_STEPS = 100
         NUM_TRAINING_EPOCHS = 3
-        BATCH_SIZE = 32 # 16
-        GRAD_ACCUM_SIZE = 1
-        LEARNING_RATE = 1e-3
-        PREDICTION_BATCH_SIZE = 32     
+        BATCH_SIZE = 16
+        GRAD_ACCUM_SIZE = 2
+        LEARNING_RATE = 1e-4
+        PREDICTION_BATCH_SIZE = BATCH_SIZE  
         LORA_CONFIG_R = 32
         LORA_CONFIG_ALPHA = 16
-        LORA_CONFIG_DROPOUT = 0.05
+        LORA_CONFIG_DROPOUT = 0.1
     else:    
         # Smaller dataset 100 rows
         df_train, df_val, df_val_test, category_map, category_map_from_index = preprocess_dataset()

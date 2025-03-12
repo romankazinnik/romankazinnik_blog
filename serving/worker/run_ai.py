@@ -29,7 +29,7 @@ def google_storage_file_download(uploaded_file_name: str = "test_up.png", bucket
     #logger.info(f"File downloaded successfully: {bucket_name}, {uploaded_file_name}, {down_file}")
     return
 
-def run_ai(prompt: str, filename: str, is_cpu: bool=False, num_inference_steps:int=50)->dict:
+def run_ai(prompt: str, filename: str, is_cpu: bool=False, num_inference_steps:int=200)->dict:
     if is_cpu:
         # cpu only
         pipe = DiffusionPipeline.from_pretrained("stabilityai/sdxl-turbo")

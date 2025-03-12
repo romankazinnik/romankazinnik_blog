@@ -21,8 +21,12 @@ Market AI is a peer-to-peer platform that connects GPU owners with AI developers
 ```bash
 uv venv --python 3.11 uvmq
 
+source uvmq/bin/activate
+# Install FastAPI message queue dependencies
 uv pip install -r requirements.txt
-
+# install API dependencies
+uv pip install transformers torch huggingface-hub diffusers accelerate google-cloud-storage google
+uv pip install requests
 sudo apt install redis-server
 
 systemctl --user start docker-desktop
@@ -57,8 +61,14 @@ redis-cli
 
 ## Development
 ```bash
+cd serving
+# Local api ('rider', AI developer)
+uv run uvicorn api_local.api_rider:app --host 0.0.0.0 --port 8001 --reload
+
+# Remote api ('driver', GPU owner)
 uv run uvicorn api.api:app --host 0.0.0.0 --port 8000 --reload
 
+# Remote worker ('driver', GPU owner)
 uv run celery -A worker.worker worker --loglevel=info --concurrency=1000 --pool=gevent
 ```
 ## Production
