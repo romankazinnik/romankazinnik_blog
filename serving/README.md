@@ -57,6 +57,12 @@ sudo apt install redis-tools
 redis-server
 
 redis-cli
+
+Google storage API
+
+./google-cloud-sdk/bin/gcloud init
+
+./google-cloud-sdk/bin/gcloud auth application-default login
 ```
 
 ## Development
@@ -86,6 +92,10 @@ http://192.168.7.230:8000/docs
 
 ### Local ('rider'): submit API/GPU jobs to remote server
 ```bash
+
+
+mkdir /tmp/test001 # download files from gcs
+
 http://localhost:8001/uber_rider
 
 uv run celery -A worker.worker_rider worker --loglevel=info --concurrency=1000 --pool=gevent
