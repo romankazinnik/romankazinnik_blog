@@ -76,12 +76,12 @@ def model_train(category_map, lora_config_r = 16, lora_config_alpha = 8, lora_co
     # prepare_model_for_kbit_training() function to preprocess the quantized model for training.
 
     model = prepare_model_for_kbit_training(model)
-    #model
+    print(model)
 
     # get_peft_model prepares a model for training with a PEFT method such as LoRA by wrapping the base model and PEFT configuration with get_peft_model"""
 
     model = get_peft_model(model, lora_config)
-    # model
+    print(model)
 
     ### Load the tokenizer
     tokenizer = AutoTokenizer.from_pretrained(model_name, add_prefix_space=True)
@@ -368,13 +368,13 @@ if __name__ == "__main__":
         EVAL_STEPS = 100
         LOGGING_STEPS = 20
         SAVING_STEPS = 100
-        NUM_TRAINING_EPOCHS = 3
+        NUM_TRAINING_EPOCHS = 10
         BATCH_SIZE = 16
-        GRAD_ACCUM_SIZE = 2
-        LEARNING_RATE = 1e-4
+        GRAD_ACCUM_SIZE = 1
+        LEARNING_RATE = 1e-5
         PREDICTION_BATCH_SIZE = BATCH_SIZE  
-        LORA_CONFIG_R = 32
-        LORA_CONFIG_ALPHA = 16
+        LORA_CONFIG_R = 16
+        LORA_CONFIG_ALPHA = 8
         LORA_CONFIG_DROPOUT = 0.1
     else:    
         # Smaller dataset 100 rows
