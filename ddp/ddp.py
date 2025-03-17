@@ -64,6 +64,7 @@ class SimpleNet(nn.Module):
 ##############################
 # 2) Training loop (per rank)
 ##############################
+IS_STORE = False
 def ddp_train_loop(rank, world_size, args):
     """
     rank: process rank [0..world_size-1]
@@ -75,7 +76,7 @@ def ddp_train_loop(rank, world_size, args):
     store_path = os.path.join(args["save_path"], "filestore")
     os.makedirs(store_path, exist_ok=True)
 
-    if False:
+    if IS_STORE:
         # The second argument to FileStore is the number of processes (world_size)
         store = dist.FileStore(os.path.join(store_path, "store"), WORLD_SIZE)
 
@@ -96,9 +97,7 @@ def ddp_train_loop(rank, world_size, args):
         assert torch.cuda.is_available(), "assumes GPU"
         dist.init_process_group(
             backend=dist.Backend.NCCL,
-            # store=store, # TBD:  assert rank >= 0, "rank must be non-negative if using store"
             world_size=WORLD_SIZE,
-            # rank=rank, # RuntimeError: The server socket has failed to listen on any local network address.
             )
         print(f" *** ddp rank={rank}  dist.get_rank()={dist.get_rank()}") # *** ddp rank=0  dist.get_rank()=3
         rank = dist.get_rank()
@@ -242,16 +241,16 @@ def main():
 
     os.makedirs(args["save_path"], exist_ok=True)    
 
-    if True:
-        files = glob.glob('./checkpoints/*')
-        for f in files:
-            print(f"removing {f}")
-            # Check if the file exists before deleting
-            try:
-                if os.path.exists(f):
-                    os.remove(f)
-            except Exception as e:
-                print(f"e={e}")
+
+    files = glob.glob('./checkpoints/*')
+    for f in files:
+        print(f"removing {f}")
+        # Check if the file exists before deleting
+        try:
+            if os.path.exists(f):
+                os.remove(f)
+        except Exception as e:
+            print(f"e={e}")
 
     processes = []
     for iproc in range(args['num_processes']):

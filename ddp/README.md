@@ -55,7 +55,7 @@ The `ddp.py` script implements parallel PyTorch model training using Hogwild pri
 ### Performance
 The implementation achieves:
 - Maximum GPU utilization for model training
-- Efficient CPU usage for test processes
+- Maximum CPU usage for test processes
 - Reduced training time through parallel processing
 
 Notice ddp.py maxes out GPU usage with model training and CPU usage with test process.
