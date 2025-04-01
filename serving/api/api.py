@@ -255,7 +255,7 @@ async def get_status(request: StatusRequest) -> StatusResponse:
     # Access the child tasks directly through the children property
     for task in restored_results.children:
         tasks_by_status[task.state] += 1
-        logger.info(f" ******* task.id={task.id} task.state={task.state}")
+        #logger.info(f" ******* task.id={task.id} task.state={task.state}")
 
     # Get task results, which will be None for tasks that aren't done
     results: List[Optional[Dict[str, Any]]] = [
