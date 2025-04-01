@@ -6,7 +6,7 @@ from typing import Union, Optional, List
 
 import requests
 
-from utils import read_jpeg_images
+from read_jpeg import read_jpeg_images
 
 IP_ADDRESS="localhost"
 
@@ -109,10 +109,10 @@ def check_status(batch_id_list: List[str])->int:
                     #logger.info(f"*** {key}: {value}")           
                 if result['ready']: # results, tasks
                     num_success += 1  
-                    num_tasks_done += len(result['tasks'])
+                    num_tasks_done += len(result['results'])
             else:
                 logger.info(f"Error: response.status_code={response.status_code} result={result}")
-        logger.info(f"done={num_success} ({len(batch_id_list)}) {num_tasks_done}")
+        logger.info(f"done={num_success} ({len(batch_id_list)}) num_tasks_done={num_tasks_done}")
         time.sleep(1)
     
     return num_success
@@ -136,8 +136,8 @@ if __name__ == "__main__":
 
     total_images = 0
 
-    request_images = 2
-    num_requests = 2
+    request_images = 50
+    num_requests = 20
     fn_list = fn_list * int(1+num_requests * request_images/len(fn_list))
     for i in range(num_requests):
         images_group = fn_list[i*request_images: (i+1)*request_images]

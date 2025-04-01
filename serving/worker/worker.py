@@ -17,7 +17,8 @@ from .run_ai import run_ai, google_storage_file_upload, google_storage_file_down
 import json
 
 from .read_jpeg import process_files_batch
-# Import the fast batch function (or define it if needed)
+
+IMAGE_BATCH = 400
 
 logging.basicConfig(
     level=logging.INFO,
@@ -74,7 +75,7 @@ app.conf.update(
 batch_processor = None
 
 class BatchProcessor:
-    def __init__(self, batch_size: int = 100, max_wait_time: float = 1.0):
+    def __init__(self, batch_size: int = IMAGE_BATCH, max_wait_time: float = 1.0):
         self.batch_size = batch_size
         self.max_wait_time = max_wait_time
         self.queue = queue.Queue()
@@ -117,28 +118,53 @@ class BatchProcessor:
             task_ids = []
             start_time = time.time()
             
-            # Collect up to batch_size tasks or wait until max_wait_time
-            while len(batch_filenames) < self.batch_size and time.time() - start_time < self.max_wait_time:
+            if False:
+                # Collect up to batch_size tasks or wait until max_wait_time
+                while len(batch_filenames) < self.batch_size and time.time() - start_time < self.max_wait_time:
+                    try:
+                        # Wait for the remaining time or a small timeout
+                        remaining_time = max(0, self.max_wait_time - (time.time() - start_time))
+                        timeout = min(remaining_time, 0.01)
+                        task_id, filename = self.queue.get(timeout=timeout)
+                        batch_filenames.append(filename)
+                        task_ids.append(task_id)
+                    except queue.Empty:
+                        # If queue is empty and we already have some tasks, process them
+                        if batch_filenames:
+                            break 
+            else:
+            # First wait for at least one task to arrive
                 try:
-                    # Wait for the remaining time or a small timeout
-                    remaining_time = max(0, self.max_wait_time - (time.time() - start_time))
-                    timeout = min(remaining_time, 0.1)
-                    task_id, filename = self.queue.get(timeout=timeout)
+                    task_id, filename, image_batch_transformed = self.queue.get(timeout=self.max_wait_time)
                     batch_filenames.append(filename)
                     task_ids.append(task_id)
                 except queue.Empty:
-                    # If queue is empty and we already have some tasks, process them
-                    if batch_filenames:
-                        break
-            
+                    # No tasks arrived, start over
+                    continue
+                
+                time.sleep(2)
+                # Now pull as many tasks as possible from the queue without blocking
+                remaining_capacity = self.batch_size - 1  # We already have one task
+                
+                # Try to get all available tasks up to remaining capacity
+                while remaining_capacity > 0:
+                    try:
+                        # Non-blocking get - only get what's immediately available
+                        task_id, filename, image_batch_transformed = self.queue.get(block=False)
+                        batch_filenames.append(filename)
+                        task_ids.append(task_id)
+                        remaining_capacity -= 1
+                    except queue.Empty:
+                        # No more tasks available immediately
+                        break                
             # If we collected any tasks, process the batch
             if batch_filenames:
                 batch_size = len(batch_filenames)
-                logger.info(f"Processing batch of {batch_size} files")
+                logger.error(f"Processing batch of {batch_size} files")
+                
                 start_process_time = time.time()
                 
                 try:
-                    # Call the fast batch processing function
                     batch_results = process_files_batch(input_image_filename_list=batch_filenames)
                     
                     # Distribute results back to individual tasks
@@ -158,16 +184,16 @@ class BatchProcessor:
                         if task_id in self.results:
                             self.results[task_id].put(None)  # or propagate the exception if preferred
 
-batch_processor = BatchProcessor(batch_size=100, max_wait_time=1.0)
+batch_processor = BatchProcessor(batch_size=IMAGE_BATCH, max_wait_time=1.0)
 logger.info("Batch processor initialized for worker")
 
 @worker_process_init.connect
 def initialize_batch_processor(**kwargs):
     """Initialize the batch processor when a worker process starts."""
-    #global batch_processor
+    global batch_processor
     #batch_processor = BatchProcessor(batch_size=100, max_wait_time=1.0)
     logger.info("Batch processor initialized for worker")
-
+    
 
 # Single task definition without retries
 @app.task(bind=True, name="worker.process_request")
