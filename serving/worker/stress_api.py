@@ -1,12 +1,13 @@
 import json
 import logging
 import time
+import sys
 
 from typing import Union, Optional, List
 
 import requests
 
-from read_jpeg import read_jpeg_images
+from embed_sequence import read_jpeg_images
 
 IP_ADDRESS="localhost"
 
@@ -15,7 +16,6 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger: logging.Logger = logging.getLogger(__name__)
-
 
 
 def post_request_to_uber(input_strings: Union[str,List[str]]="boy", logger=None)->Optional[str]:
@@ -49,7 +49,7 @@ def post_request_to_uber(input_strings: Union[str,List[str]]="boy", logger=None)
     else:
         return None 
 
-    logger.info(f" ***** paylod = {payload}")
+    # logger.info(f" ***** paylod = {payload}")
 
     response = requests.post(url, headers=headers, data=json.dumps(payload))
     #print(response.status_code) 
@@ -69,7 +69,7 @@ def post_request_to_uber(input_strings: Union[str,List[str]]="boy", logger=None)
     return batch_id
 
 
-def check_status(batch_id_list: List[str])->int:
+def check_status(batch_id_list: List[str], sleep_time:int=2)->int:
     """
     curl -X 'POST' \
     'http://localhost:8000/status' \
@@ -113,42 +113,60 @@ def check_status(batch_id_list: List[str])->int:
             else:
                 logger.info(f"Error: response.status_code={response.status_code} result={result}")
         logger.info(f"done={num_success} ({len(batch_id_list)}) num_tasks_done={num_tasks_done}")
-        time.sleep(1)
+        time.sleep(sleep_time)
     
     return num_success
     
 if __name__ == "__main__":
     
+    num_requests = 10
+    batch_size = 600
+    rate = 1000
+    
+    if len(sys.argv) != 4:
+        print("Usage: python script.py num_requests batch_size rate")
+    if len(sys.argv) > 1:
+        num_requests = int(sys.argv[1])
+    if len(sys.argv) > 2:
+        batch_size = int(sys.argv[2])
+    if len(sys.argv) > 3:
+        rate = int(sys.argv[3])
+
+
     # batch_id = post_request_to_uber(input_strings="********* XXXXXXX *****", logger=logger)
     batch_id_list = []
 
     #batch_id = post_request_to_uber(input_strings=[" **** a ***", "===b ===="], logger=logger)
     images_path = "/home/roman/PycharmProjects/comfyui/celery-main/romankazinnik_blog/zillow/images/"
 
-    
     jpeg_images, fn_list = read_jpeg_images(images_path) # 40 images
 
-
-    #batch_id = post_request_to_uber(input_strings=fn_list[0], logger=logger)
-    #batch_id_list.append(batch_id)
+    sleep_time = 1/rate
     
     start_time = time.time()
 
     total_images = 0
-
-    request_images = 50
-    num_requests = 20
-    fn_list = fn_list * int(1+num_requests * request_images/len(fn_list))
-    for i in range(num_requests):
-        images_group = fn_list[i*request_images: (i+1)*request_images]
-        batch_id = post_request_to_uber(input_strings=images_group, logger=logger)
-        batch_id_list.append(batch_id)
-        total_images += len(images_group)
     
-    num_success = check_status(batch_id_list=batch_id_list)
+    log_rate = int(num_requests/10)
+
+    fn_list = fn_list * int(num_requests * batch_size)
+
+    for i in range(num_requests):
+        images_group = fn_list[i*batch_size: (i+1)*batch_size]
+
+        batch_id = post_request_to_uber(input_strings=images_group, logger=logger)
+        
+        batch_id_list.append(batch_id)
+        
+        total_images += len(images_group)
+        
+        time.sleep(sleep_time)
+
+    num_success = check_status(batch_id_list=batch_id_list, sleep_time=0)
+
+    
     total_time = time.time()-start_time
+    
     logger.info(f"done={num_success} ({len(batch_id_list)}) {total_time:.2f}sec, {total_images/total_time:.2f} image/sec")
     
-    quit(-1) # Replace with your directory path containing JPEG images
-    
-    # Check status 
+    quit(1) 

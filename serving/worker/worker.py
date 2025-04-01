@@ -7,18 +7,18 @@ import shutil
 import threading
 import queue
 from functools import wraps
-
+from typing import Optional, List, Tuple
 
 from celery import Celery
 from celery.signals import worker_process_init
 from celery.utils.log import get_task_logger
 
-from .run_ai import run_ai, google_storage_file_upload, google_storage_file_download
+# from .run_ai import run_ai, google_storage_file_upload, google_storage_file_download
 import json
 
-from .read_jpeg import process_files_batch
+from worker.embed_sequence import EmbeddingsModel
 
-IMAGE_BATCH = 400
+IMAGE_BATCH = 600
 
 logging.basicConfig(
     level=logging.INFO,
@@ -83,6 +83,7 @@ class BatchProcessor:
         self.lock = threading.Lock()
         self.batch_thread = threading.Thread(target=self._process_batches, daemon=True)
         self.batch_thread.start()
+        self.EmbeddingsInference = EmbeddingsModel()
         logger.info(f"BatchProcessor initialized with batch_size={batch_size}, max_wait_time={max_wait_time}")
     
     def add_task(self, task_id: str, filename: str) -> queue.Queue:
@@ -135,14 +136,14 @@ class BatchProcessor:
             else:
             # First wait for at least one task to arrive
                 try:
-                    task_id, filename, image_batch_transformed = self.queue.get(timeout=self.max_wait_time)
+                    task_id, filename = self.queue.get(timeout=self.max_wait_time)
                     batch_filenames.append(filename)
                     task_ids.append(task_id)
                 except queue.Empty:
                     # No tasks arrived, start over
                     continue
                 
-                time.sleep(2)
+                time.sleep(1)
                 # Now pull as many tasks as possible from the queue without blocking
                 remaining_capacity = self.batch_size - 1  # We already have one task
                 
@@ -150,7 +151,7 @@ class BatchProcessor:
                 while remaining_capacity > 0:
                     try:
                         # Non-blocking get - only get what's immediately available
-                        task_id, filename, image_batch_transformed = self.queue.get(block=False)
+                        task_id, filename = self.queue.get(block=False)
                         batch_filenames.append(filename)
                         task_ids.append(task_id)
                         remaining_capacity -= 1
@@ -165,7 +166,8 @@ class BatchProcessor:
                 start_process_time = time.time()
                 
                 try:
-                    batch_results = process_files_batch(input_image_filename_list=batch_filenames)
+                    # batch_results = batch_filenames 
+                    batch_results = self.EmbeddingsInference.process_files_batch(input_image_filename_list=batch_filenames)
                     
                     # Distribute results back to individual tasks
                     for i, task_id in enumerate(task_ids):
@@ -184,7 +186,11 @@ class BatchProcessor:
                         if task_id in self.results:
                             self.results[task_id].put(None)  # or propagate the exception if preferred
 
-batch_processor = BatchProcessor(batch_size=IMAGE_BATCH, max_wait_time=1.0)
+
+EmbeddingsInference = EmbeddingsModel()
+
+# batch_processor = BatchProcessor(batch_size=IMAGE_BATCH, max_wait_time=1.0)
+
 logger.info("Batch processor initialized for worker")
 
 @worker_process_init.connect
@@ -194,6 +200,7 @@ def initialize_batch_processor(**kwargs):
     #batch_processor = BatchProcessor(batch_size=100, max_wait_time=1.0)
     logger.info("Batch processor initialized for worker")
     
+
 
 # Single task definition without retries
 @app.task(bind=True, name="worker.process_request")
@@ -230,12 +237,14 @@ def process_request(self: Celery.Task, input_string: str) -> Dict[str, Any]:
         else:
             # Fallback to original method if batch processing failed
             logger.warning(f"Batch processing failed for {task_id}, using original method")
-            output_fn_list = process_files_batch(input_image_filename_list=[input_string])
+            output_fn_list = EmbeddingsInference.process_files_batch(input_image_filename_list=[input_string])
+            # output_fn_list = [input_string] 
     else:
         # Use original method if batch processor is not available
         logger.info(f"Batch processor not available, using original method for {input_string}")
-        output_fn_list = process_files_batch(input_image_filename_list=[input_string])
-    
+        output_fn_list = EmbeddingsInference.process_files_batch(input_image_filename_list=[input_string])
+        # output_fn_list = [input_string] 
+        
     ret_dic: dict = {"input_string": input_string, "output_fn": output_fn_list[0]}
 
     ret_str:str = json.dumps(ret_dic)

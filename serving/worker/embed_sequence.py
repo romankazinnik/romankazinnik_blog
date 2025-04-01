@@ -4,7 +4,7 @@ import sys
 import glob
 import numpy as np
 import time
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Tuple
 
 from PIL import Image
 import torch
