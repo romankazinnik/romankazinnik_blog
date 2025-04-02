@@ -127,7 +127,7 @@ async def process_urls(request: ProcessUrlRequest) -> ProcessResponse:
     for input_str in inputs:
         # Create a signature for each input
         task = celery_app.signature(
-            "worker.process_request", kwargs={"input_string": input_str}
+            "worker.process_request_embed", kwargs={"input_string": input_str}
         )
         tasks.append(task)
 

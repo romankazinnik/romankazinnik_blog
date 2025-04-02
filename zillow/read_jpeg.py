@@ -2,55 +2,20 @@
 import os
 from PIL import Image
 import glob
-
-def read_jpeg_images(directory_path, num_images=10):
-    """
-    Reads JPEG images from a specified directory and creates a list of 
-    PIL.JpegImagePlugin.JpegImageFile objects.
-    
-    Args:
-        directory_path (str): Path to the directory containing JPEG images
-        num_images (int): Number of images to read (default: 10)
-        
-    Returns:
-        list: List of PIL.JpegImagePlugin.JpegImageFile objects
-    """
-    # Get list of jpeg files in the directory
-    jpeg_files = glob.glob(os.path.join(directory_path, "*.jpg"))
-    jpeg_files.extend(glob.glob(os.path.join(directory_path, "*.jpeg")))
-    
-    # Sort files to ensure consistent behavior
-    jpeg_files.sort()
-    
-    # Limit to the requested number of images
-    jpeg_files = jpeg_files[:num_images]
-    
-    if len(jpeg_files) < num_images:
-        print(f"Warning: Only {len(jpeg_files)} JPEG images found in {directory_path}")
-    
-    # Read images and create list of JpegImageFile objects
-    image_objects = []
-    for file_path in jpeg_files:
-        try:
-            img = Image.open(file_path)
-            # Verify this is actually a JPEG image
-            if img.format == "JPEG":
-                image_objects.append(img)
-                print(f"Loaded: {file_path}")
-            else:
-                print(f"Skipped: {file_path} (Not a JPEG image)")
-        except Exception as e:
-            print(f"Error loading {file_path}: {e}")
-    
-    print(f"Successfully loaded {len(image_objects)} JPEG images")
-    return image_objects
-
-
+from typing import List
+import numpy as np
 
 import torch
 from transformers import AutoFeatureExtractor, AutoModel, AutoProcessor
+import torch
+import torchvision.transforms as T
+from PIL import Image
+import PIL.JpegImagePlugin
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
+from utils import read_jpeg_images
+from utils import convert_file_to_image
+
+device = "cuda" #  if torch.cuda.is_available() else "cpu"
 model_ckpt1 = "nateraw/vit-base-beans"
 #model_ckpt2 = "IDEA-Research/grounding-dino-tiny"
 
@@ -60,11 +25,8 @@ hidden_dim = model.config.hidden_size
 
 model.to(device)
 
-processor = AutoProcessor.from_pretrained(model_ckpt1)
+#processor = AutoProcessor.from_pretrained(model_ckpt1)
 #processor.to(device)
-import torch
-import torchvision.transforms as T
-
 
 
 # Data transformation chain.
@@ -88,15 +50,60 @@ def extract_embeddings(model: torch.nn.Module):
             [transformation_chain(image) for image in images]
         )
         print(f"image_batch_transformed={image_batch_transformed.shape}")
+        
         new_batch = {"pixel_values": image_batch_transformed.to(device)}
+        
         with torch.no_grad():
-            embeddings = model(**new_batch).last_hidden_state[:, 0]#.cpu()
-            #embeddings = model(image_batch_transformed.to(device)).last_hidden_state[:, 0].cpu()
-            #embeddings = processor(image_batch_transformed, return_tensors="pt").to(device)
-            print(f"shape={len(images), {type(images[0])}} {type(embeddings)}"); #fff()
+            embeddings = model(**new_batch).last_hidden_state[:, 0]
+            embeddings = embeddings.cpu()
+        
+        #embeddings = model(image_batch_transformed.to(device)).last_hidden_state[:, 0].cpu()
+        #embeddings = processor(image_batch_transformed, return_tensors="pt").to(device)
+        print(f"shape={len(images), {type(images[0])}} {type(embeddings)}"); #fff()
         return {"embeddings": embeddings}
 
     return pp
+
+def process_batch_model(image_batch_transformed: torch.Tensor)->torch.Tensor:
+    pass
+
+def process_batch(image_list: List[PIL.JpegImagePlugin.JpegImageFile])->torch.Tensor:
+    """
+    Process a batch of input tensors using the model.
+    
+    Args:
+        model: The PyTorch model to use for processing.
+    """
+    image_batch_transformed = torch.stack(
+        [transformation_chain(image) for image in image_list]
+    )    
+    
+    new_batch = {"pixel_values": image_batch_transformed.to(device)}
+    
+    with torch.no_grad():
+        embeddings = model(**new_batch).last_hidden_state[:, 0]#.cpu()
+    
+    embeddings = embeddings.cpu() # .numpy()
+
+    return embeddings   
+    
+
+
+def process_files_batch(input_image_filename_list: List[str])->List[str]:
+    # open all images and convert to tensors
+    jpeg_image_list: List[PIL.JpegImagePlugin.JpegImageFile] = [convert_file_to_image(image_filename) for image_filename in input_image_filename_list]
+    
+    # process the batch
+    embeddings: torch.Tensor = process_batch(jpeg_image_list)
+    # convert embeddings to list of tensors
+    
+    embeddings_list: List[torch.Tensor] = torch.unbind(embeddings) # invers to stack
+    embeddings_filename_list: List[str] = [f"{image_filename}.embeddings.pt" for image_filename in input_image_filename_list]
+    for fn, embedding in zip(embeddings_filename_list, embeddings_list):
+        # torch metadata 1MB: torch.save(embedding, fn)
+        np.save(fn+".npy",embedding.numpy())
+
+    return embeddings_filename_list
 
 # Example usage
 if __name__ == "__main__":
@@ -107,8 +114,8 @@ if __name__ == "__main__":
     
     if True:
         # Read 10 JPEG images and create list of JpegImageFile objects
-        jpeg_images = read_jpeg_images(image_directory)
-        jpeg_images = jpeg_images * 50
+        #jpeg_images: List[PIL.JpegImagePlugin.JpegImageFile], fn_list:List[str] = read_jpeg_images(image_directory) # 40 images
+        jpeg_images, fn_list = read_jpeg_images(image_directory) # 40 images
     else:
         import requests
 
@@ -119,12 +126,22 @@ if __name__ == "__main__":
 
     # Verify the objects are of the expected type
     for i, img in enumerate(jpeg_images[:2]):
-        print(f"Image {i+1}: {type(img).__module__}.{type(img).__name__}")
+        print(f"Image {i}: {type(img).__module__}.{type(img).__name__}")
         print(f"  Size: {img.size}")
         print(f"  Mode: {img.mode}")
 
+    jpeg_images = jpeg_images * 10000 # 40*100=4000 images
+    fn_list = fn_list * 10000
+    batch_size = 600
     for i in range(100):
         print(f"i={i}")
-        long_jpeg_images = jpeg_images
-        embeds = extract_embeddings(model)({"image": long_jpeg_images})
+        
+        if True:
+            # Disc IO  
+            batch = fn_list[i*batch_size:(i+1)*batch_size]
+            embed_fn_list: List[str] = process_files_batch(batch)
+        else:
+            # No disc IO": GPU util 100%
+            batch = jpeg_images[i*batch_size:(i+1)*batch_size]
+            embeds = extract_embeddings(model)({"image": batch})
         #print(f"embeds={embeds['embeddings'].shape}")

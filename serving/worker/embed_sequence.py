@@ -122,7 +122,7 @@ class EmbeddingsModel:
 
         return pp
 
-    def process_batch_model(self, image_batch_transformed)->torch.Tensor:
+    def process_batch_model(self, image_batch_transformed: torch.Tensor)->torch.Tensor:
         new_batch = {"pixel_values": image_batch_transformed.to(self.device)}
         
         start_time = time.time()

@@ -75,9 +75,11 @@ uv run uvicorn api_local.api_rider:app --host 0.0.0.0 --port 8001 --reload
 # Remote api ('driver', GPU owner)
 uv run uvicorn api.api:app --host 0.0.0.0 --port 8000 --reload
 
-# Remote worker ('driver', GPU owner)
+# Remote diffusion worker ('driver', GPU owner)
 uv run celery -A worker.worker worker --loglevel=info --concurrency=1000 --pool=gevent
-#--autoscale=400,1000
+
+# Remote embedding worker 
+uv run celery -A worker.worker_embed  worker --loglevel=error --concurrency=1000 --pool=gevent --autoscale=400,1000
 
 # number of active nodes
 uv run celery -A  worker  inspect active
