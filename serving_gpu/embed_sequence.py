@@ -232,7 +232,7 @@ if __name__ == "__main__":
     
     print(f" cpu IO and processing latency={1000*(time.time()-start_time)/batch_size:.1f}ms \n")
     
-    #image_batch_transformed_gpu = image_batch_transformed_cpu.to(EmbeddingsInference.device)
+    image_batch_transformed_gpu = image_batch_transformed_cpu.to(EmbeddingsInference.device)
     #embed_fn_list_gpu: List[str] = EmbeddingsInference.process_files_batch(jpeg_image_list,image_batch_transformed_gpu)
 
     EmbeddingsInference.gpu_total_time = 0
