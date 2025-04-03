@@ -22,7 +22,7 @@ My first task was benchmarking the sequential inference pipeline. I measured lat
 - GPU single inference
 - GPU batched inference
 
-<img src="images/table1.png" width="500" height="400" />
+<img src="images/table1.jpg" width="500" height="400" />
 
 An interesting but expected discovery emerged: while GPUs could process batches of 200 images nearly as fast as a single image, this theoretical advantage wasn't materializing in practice. 
 
@@ -30,11 +30,11 @@ An interesting but expected discovery emerged: while GPUs could process batches 
 
 **Figure 1** revealed the culprit: CPU-bound image loading and processing was throttling GPU performance. This created an unexpected outcome—batching, which is considered essential for training efficiency, provided only minimal speedup for inference.
 
-<img src="images/inf_fig1.png" width="800" height="500" />
+<img src="images/inf_fig1.jpg" width="800" height="500" />
 
 **Table 2** confirmed this finding, showing actual observed latencies closely matching theoretical expectations based on:
 
-<img src="images/inf_table2.png" width="600" height="500" />
+<img src="images/inf_table2.jpg" width="600" height="500" />
 
 ```
 total latency = API latency/number of workers + max(GPU latency/number of GPUs, CPU latency/number of workers)
@@ -74,7 +74,7 @@ Based on these insights, I developed an inference API built on FastAPI with Redi
 2. Achieves over 100 requests per second (7.93 ms latency)
 3. Scales linearly with additional workers (**Figure 2**) up to the maximum number of available cores
 
-<img src="images/inf_fig2.png" width="800" height="400" />
+<img src="images/inf_fig2.jpg" width="800" height="400" />
 ## Future Optimization Paths
 
 With the current bottleneck identified, two clear optimization strategies emerge:
@@ -106,9 +106,9 @@ One of the most valuable aspects of this project was the close alignment between
 
 ### Inference API architecture:
 
-<img src="images/inf_fig3.png" width="800" height="300" />
+<img src="images/inf_fig3.jpg" width="800" height="300" />
 
 
 ### Source: https://derlin.github.io/introduction-to-fastapi-and-celery/03-celery/
 
-<img src="images/inf_fig4.png" width="800" height="400" />
+<img src="images/inf_fig4.jpg" width="800" height="400" />

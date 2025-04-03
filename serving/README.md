@@ -136,4 +136,8 @@ gsutil ls gs://blog_inference
 
 ### Reference
 
-[1] https://derlin.github.io/introduction-to-fastapi-and-celery/03-celery/
+[1] https://roman-kazinnik.medium.com/market-ai-democratizing-gpu-and-model-access-41cb3dbf1052
+
+[2] https://github.com/romankazinnik/romankazinnik_blog/tree/master/serving
+
+[3] https://github.com/romankazinnik/romankazinnik_blog/tree/master/serving_gpu
