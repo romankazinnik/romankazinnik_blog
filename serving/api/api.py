@@ -96,6 +96,13 @@ class BatchTaskStore:
 
 glabal_batches = BatchTaskStore()
 
+# create text to image
+# uv run celery -A worker.worker  worker --loglevel=error --concurrency=1000 --pool=gevent --autoscale=10,20
+global_worker_signature="worker.process_request" 
+# creare image embedding
+# uv run celery -A worker.worker_embed  worker --loglevel=error --concurrency=1000 --pool=gevent --autoscale=200,500
+global_worker_signature="worker.process_request_embed" 
+
 @app.post(
     "/process",
     response_model=ProcessResponse,
@@ -127,7 +134,7 @@ async def process_urls(request: ProcessUrlRequest) -> ProcessResponse:
     for input_str in inputs:
         # Create a signature for each input
         task = celery_app.signature(
-            "worker.process_request_embed", kwargs={"input_string": input_str}
+            global_worker_signature, kwargs={"input_string": input_str}
         )
         tasks.append(task)
 

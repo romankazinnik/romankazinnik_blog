@@ -133,17 +133,16 @@ class BatchProcessor:
                         assert(isinstance(batch_filenames[0], str))
                         batch_results = self.EmbeddingsInference.process_files_batch(input_image_filename_list=batch_filenames)
                     else:
-                        #logger.error(f"{type(batch_filenames[0])}") # 
-                        assert(isinstance(batch_filenames[0], np.ndarray))
-                        
-                        image_batch_transformed = torch.from_numpy(np.stack(batch_filenames))
-                        
-                        embeddings = self.EmbeddingsInference.process_batch_model(image_batch_transformed)
+                        if True:
+                            assert(isinstance(batch_filenames[0], np.ndarray))                            
+                            image_batch_transformed = torch.from_numpy(np.stack(batch_filenames))                            
+                            embeddings = self.EmbeddingsInference.process_batch_model(image_batch_transformed)
+                            embeddings_list: List[torch.Tensor] = list(torch.unbind(embeddings,dim=0)) 
+                            batch_results: List[np.ndarray] = [embedding.numpy() for embedding in embeddings_list]
+                        else:
+                            # debug mode: return None for all results
+                            batch_results = [None] * len(batch_filenames)
 
-                        embeddings_list: List[torch.Tensor] = list(torch.unbind(embeddings,dim=0)) 
-
-                        batch_results: List[np.ndarray] = [embedding.numpy() for embedding in embeddings_list]
-                        
                     # Distribute results back to individual tasks
                     for i, task_id in enumerate(task_ids):
                         # Check if the task still exists in results without a lock

@@ -134,8 +134,7 @@ class EmbeddingsModel:
 
         if not self.debug and self.device == "cuda":
             embeddings = embeddings.cpu() 
-            # print(f"embeddings.shape={embeddings.shape}")
-        
+            
         return embeddings
 
 
@@ -186,21 +185,23 @@ if __name__ == "__main__":
 
     num_requests = 10
     batch_size = 600
-    rate = 1000
+    profile_mode = 0
     EmbeddingsInference.debug = False
 
     if len(sys.argv) != 4:
-        print("Usage: python script.py num_requests batch_size rate debug")
+        print("Usage:   python script.py num_requests batch_size debug profile_mode (0-off, 1-on, 2-gpu model only)")
+        print("Example: python script.py 10           500        0     0 (0-off, 1-on, 2-gpu model only, 3-gpu+to device, 4-cores only and no GPU)")
     if len(sys.argv) > 1:
         num_requests = int(sys.argv[1])
     if len(sys.argv) > 2:
         batch_size = int(sys.argv[2])
     if len(sys.argv) > 3:
-        rate = int(sys.argv[3])
+        EmbeddingsInference.debug = int(sys.argv[3])
     if len(sys.argv) > 4:
-        EmbeddingsInference.debug = int(sys.argv[4])
+        profile_mode = int(sys.argv[4])
+
         
-    print(f"\n num_requests={num_requests} batch_size={batch_size} rate={rate} EmbeddingsInference.debug={EmbeddingsInference.debug}\n")
+    print(f"\n num_requests={num_requests} batch_size={batch_size} EmbeddingsInference.debug={EmbeddingsInference.debug}\n")
     
     # Replace with your directory path containing JPEG images
     images_path = "/home/roman/PycharmProjects/comfyui/celery-main/romankazinnik_blog/zillow/images/"
@@ -214,42 +215,55 @@ if __name__ == "__main__":
     img = jpeg_images[0]
     print(f"Image example: {type(img).__module__}.{type(img).__name__}  Size: {img.size} Mode: {img.mode}")
 
-    start_time = time.time()
+    
 
     max_num_images = num_requests * batch_size
     jpeg_images = jpeg_images * max_num_images # 40*1000=400009 images
     fn_list = fn_list * max_num_images
     
     num_success = 0        
-    sleep_time = 1/rate
-    log_rate = int(num_requests/10)
+    log_rate = int(1.+float(num_requests)/10.)
 
+    start_time = time.time()
     # (2) CPU mem -> device mem
     jpeg_image_list: List[PIL.JpegImagePlugin.JpegImageFile] = [convert_file_to_image(image_filename) for image_filename in fn_list[:batch_size]]
     # (3) GPUI-100% test: on device mem
-    image_batch_transformed = torch.stack([EmbeddingsInference.transformation_chain(image) for image in jpeg_image_list]).to(EmbeddingsInference.device)
+    image_batch_transformed_cpu = torch.stack([EmbeddingsInference.transformation_chain(image) for image in jpeg_image_list])
+    
+    print(f" cpu IO and processing latency={1000*(time.time()-start_time)/batch_size:.1f}ms \n")
+    
+    #image_batch_transformed_gpu = image_batch_transformed_cpu.to(EmbeddingsInference.device)
+    #embed_fn_list_gpu: List[str] = EmbeddingsInference.process_files_batch(jpeg_image_list,image_batch_transformed_gpu)
 
+    EmbeddingsInference.gpu_total_time = 0
+
+    start_time = time.time()
+    
     for i in range(num_requests):
         if i % log_rate == 0: 
             print(f"i={i}")
         
-        # (1) IO disc -> CPU mem -> device mem
-        
-        batch = fn_list[i*batch_size:(i+1)*batch_size]  
-        embed_fn_list: List[str] = EmbeddingsInference.process_files_batch(batch)
-        
-        # (2) CPU mem -> device mem
-        
-        # embed_fn_list: List[str] = EmbeddingsInference.process_files_batch(jpeg_image_list)
-        
-        # GPUI-100% test: on device mem
-        
-        #embed_fn_list: List[str] = EmbeddingsInference.process_files_batch(jpeg_image_list,image_batch_transformed)
+        if profile_mode == 0:
+            # (1) IO disc -> CPU mem -> device mem      
+            # entire cycle      
+            batch = fn_list[i*batch_size:(i+1)*batch_size]  
+            embed_fn_list: List[str] = EmbeddingsInference.process_files_batch(batch)        
+        elif profile_mode == 1:
+            # (2) CPU mem -> device mem -> inference -> CPU mem    
+            # without IO latency    
+            embed_fn_list: List[str] = EmbeddingsInference.process_files_batch(jpeg_image_list)
+        elif profile_mode == 2:
+            # GPUI-100% test: on device mem
+            embed_fn_list: List[str] = EmbeddingsInference.process_files_batch(jpeg_image_list,image_batch_transformed_gpu)
         
         num_success += batch_size
 
-        time.sleep(sleep_time)
-        
     
     total_time = time.time()-start_time
-    print(f"done={num_success} {total_time:.2f}sec, {num_success/total_time:.2f} image/sec model only={num_success/EmbeddingsInference.gpu_total_time:.2f}")
+    print(f"done={num_success} throughput={num_success/total_time:.2f} image/sec latency={1000*total_time/num_success:.1f}ms") # latency_model={1000*EmbeddingsInference.gpu_total_time/num_success:.1f}ms")
+
+    # last GPU cycle
+    start_time = time.time()
+    image_batch_transformed_gpu = image_batch_transformed_cpu.to(EmbeddingsInference.device)
+    embed_fn_list_gpu: List[str] = EmbeddingsInference.process_files_batch(jpeg_image_list,image_batch_transformed_gpu)
+    print(f" GPU inference latency (last fast cycle)={1000*(time.time()-start_time)/batch_size:.1f}ms \n")

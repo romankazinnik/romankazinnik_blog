@@ -167,6 +167,6 @@ if __name__ == "__main__":
     
     total_time = time.time()-start_time
     
-    logger.info(f"done={num_success} ({len(batch_id_list)}) {total_time:.2f}sec, {total_images/total_time:.2f} image/sec")
+    logger.info(f"done={num_success} throughput={total_images/total_time:.2f} image/sec latency={1000*total_time/total_images:.2f} ms")
     
     quit(1) 

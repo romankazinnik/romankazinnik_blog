@@ -92,7 +92,7 @@ app_embed.conf.update(
 # Global batch processor that will be initialized per worker process
 global_is_batch_processing_wait_each_get = False
 
-batch_processor = BatchProcessor(batch_size=IMAGE_BATCH, max_wait_time=1.0)
+batch_processor = None # BatchProcessor(batch_size=IMAGE_BATCH, max_wait_time=1.0)
 
 logger.info("Batch processor initialized for worker")
 
@@ -128,16 +128,17 @@ def process_request_embed(self: Celery.Task, input_string: str) -> Dict[str, Any
         logger.info(f"Task {task_id}: Using batch processor for {input_string}")
         output_fn:Optional[str] = batch_processor.run_task_in_batch(task_id, input_string, EmbeddingsInference)
 
-        if output_fn:
+        if output_fn is not None:
             output_fn_list = [output_fn]
         else:
             # Fallback to original method if batch processing failed
             logger.warning(f"Batch processing failed for {task_id}, using original method")
             output_fn_list = EmbeddingsInference.process_files_batch(input_image_filename_list=[input_string])
-            # output_fn_list = [input_string] 
     else:
         # Use original method if batch processor is not available
         logger.info(f"Batch processor not available, using original method for {input_string}")
+        # comment out for testing of the framework latency 
+        # output_fn_list = [input_string]
         output_fn_list = EmbeddingsInference.process_files_batch(input_image_filename_list=[input_string])
         
     ret_dic: dict = {"input_string": input_string, "output_fn": output_fn_list[0]}

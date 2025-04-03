@@ -134,3 +134,6 @@ gsutil ls gs://blog_inference
 
 **Fast API recieves gcs links from remote API server and downloads them to local storage.**
 
+### Reference
+
+[1] https://derlin.github.io/introduction-to-fastapi-and-celery/03-celery/
