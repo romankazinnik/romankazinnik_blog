@@ -2,7 +2,7 @@ import logging
 import os
 import random
 import time
-from typing import Any, Dict
+from typing import Any, Dict, Optional, Tuple
 import shutil
 
 
@@ -63,6 +63,44 @@ app.conf.update(
     result_expires=86400,  # 24 hours
 )
 
+is_diffusers: bool = False
+is_save_to_gcs: bool = False
+from .embed_sequence import EmbeddingsModel
+EmbeddingsInference = EmbeddingsModel()
+# Global batch processor that will be initialized per worker process
+global_is_batch_processing_wait_each_get = False
+batch_processor = None # BatchProcessor(batch_size=IMAGE_BATCH, max_wait_time=1.0)
+def process_input(task_id: str, input_string: str) -> Tuple[str, str, str]:
+    """
+    Process a request - simplified task with just a sleep.
+    """
+    global batch_processor
+    
+    if batch_processor is not None:
+        logger.info(f"Task {task_id}: Using batch processor for {input_string}")
+        output_fn:Optional[str] = batch_processor.run_task_in_batch(task_id, input_string, EmbeddingsInference)
+
+        if output_fn is not None:
+            output_fn_list = [output_fn]
+        else:
+            # Fallback to original method if batch processing failed
+            logger.warning(f"Batch processing failed for {task_id}, using original method")
+            output_fn_list = EmbeddingsInference.process_files_batch(input_image_filename_list=[input_string])
+    else:
+        # Use original method if batch processor is not available
+        logger.info(f"Batch processor not available, using original method for {input_string}")
+        # comment out for testing of the framework latency 
+        # output_fn_list = [input_string]
+        output_fn_list = EmbeddingsInference.process_files_batch(input_image_filename_list=[input_string])
+        
+    ret_dic: dict = {"input_string": input_string, "output_fn": output_fn_list[0]}
+
+    destination_path = output_fn_list[0]
+    gcs_link:str = "gcs://none/none"
+    ret_dic: dict = {"input_string": input_string} 
+    ret_str:str = json.dumps(ret_dic)    
+
+    return destination_path, gcs_link, ret_str
 
 # Single task definition without retries
 @app.task(bind=True, name="worker.process_request")
@@ -83,37 +121,34 @@ def process_request(self: Celery.Task, input_string: str) -> Dict[str, Any]:
 
     # Random sleep between 1 and 5 seconds
     time_start = time.time()
-    temp_filename = f"/home/roman/PycharmProjects/comfyui/celery-main/worker/test.png"
-    
-    ret_dic: dict = run_ai(prompt=input_string, filename=temp_filename)
-    
-    ret_str:str = json.dumps(ret_dic)
-    logger.info(f" ******* Task_id={task_id} completed with {ret_str} for {time.time() - time_start:.2f} seconds")
 
-    
-    # Ensure the destination directory exists. If not, create it.
-    # os.makedirs(destination_dir, exist_ok=True)
-    #shutil.copy(temp_filename, destination_dir)
-    
-    destination_dir = "/tmp/"
-    new_filename = f"task_id_{task_id}.png" # {str(task_id)}.png",
-    destination_path = f"{destination_dir}{new_filename}"
-    uploaded_file_name = f"test001/{new_filename}"
+    if is_diffusers:
+        temp_filename = f"/home/roman/PycharmProjects/comfyui/celery-main/worker/test.png"
+        ret_dic: dict = run_ai(prompt=input_string, filename=temp_filename)    
+        ret_str:str = json.dumps(ret_dic)
+        logger.info(f" ******* Task_id={task_id} completed with {ret_str} for {time.time() - time_start:.2f} seconds")
+        destination_dir = "/tmp/"
+        new_filename = f"task_id_{task_id}.png" # {str(task_id)}.png",
+        destination_path = f"{destination_dir}{new_filename}"
+        uploaded_file_name = f"test001/{new_filename}"
+    else:
+        destination_path, gcs_link, ret_str = process_input(task_id, input_string)
+    logger.info(f" ******* Task_id={task_id} input={input_string}: {time.time() - time_start:.2f} seconds")
+    if is_save_to_gcs:
+        try:
+            # Copy the file and rename it
+            shutil.copy(temp_filename, destination_path)
+            print(f"File copied and renamed successfully to: {destination_path}")
+        except FileNotFoundError:
+            print(f"Error: Source file not found: {temp_filename}")
+        except PermissionError:
+            print(f"Error: Permission denied to access {temp_filename} or {destination_dir}")
+        except Exception as e:
+            print(f"An error occurred: {e}")
 
-    try:
-        # Copy the file and rename it
-        shutil.copy(temp_filename, destination_path)
-        print(f"File copied and renamed successfully to: {destination_path}")
-    except FileNotFoundError:
-        print(f"Error: Source file not found: {temp_filename}")
-    except PermissionError:
-      print(f"Error: Permission denied to access {temp_filename} or {destination_dir}")
-    except Exception as e:
-        print(f"An error occurred: {e}")
-
-    
-    gcs_link:str = google_storage_file_upload(up_file=destination_path, uploaded_file_name=uploaded_file_name)
-    logger.info(f"File uploaded successfully: gcs_link={gcs_link}, {destination_path}, {uploaded_file_name}")
+        
+        gcs_link:str = google_storage_file_upload(up_file=destination_path, uploaded_file_name=uploaded_file_name)
+        logger.info(f"File uploaded successfully: gcs_link={gcs_link}, {destination_path}, {uploaded_file_name}")
     
     # Return the input parameters along with the result
     return {

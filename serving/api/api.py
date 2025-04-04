@@ -99,9 +99,7 @@ glabal_batches = BatchTaskStore()
 # create text to image
 # uv run celery -A worker.worker  worker --loglevel=error --concurrency=1000 --pool=gevent --autoscale=10,20
 global_worker_signature="worker.process_request" 
-# creare image embedding
-# uv run celery -A worker.worker_embed  worker --loglevel=error --concurrency=1000 --pool=gevent --autoscale=200,500
-global_worker_signature="worker.process_request_embed" 
+# creare image embedding 
 
 @app.post(
     "/process",

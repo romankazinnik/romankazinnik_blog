@@ -25,65 +25,16 @@ My first task was benchmarking the sequential inference pipeline. I measured lat
 - GPU single inference
 - GPU batched inference
 
-### Reproduce: 
-```
-
- # Instruction batch size=200:
-
-> python3 embed_sequence.py 1 200
-
-cpu IO and processing latency=10.0ms 
-throughput=77.71 image/sec latency=12.9ms
-GPU inference latency (last cycle)=2.7ms
-
- # Instruction batch size=1:
-
-> python3 embed_sequence.py 200 1
-
-cpu IO and processing latency=2.8ms 
-done=200 throughput=70.70 image/sec latency=14.1ms
-GPU inference latency (last cycle)=5.1ms 
-```
-
 [comment]:  <img src="table1.jpg" width="500" height="400">  
 
 <img src="fig_table1_v2.jpg" width="300" height="200">  
 
 Ptorch profiler results are identical to the above results: 10ms cpu latency and 2.7 ms GPU latency per image.
 
-```
-# batch size 200
-
-> python3 embed_sequence_profile.py 100 200 0 1
-
------ Per Image Statistics -----
-Disk I/O time: 0.08 ms/image
-CPU processing time: 8.97 ms/image
-GPU transfer time: 2.05 ms/image
-GPU inference time: 0.67 ms/image
-```
-
-For batch size 1 pytorch profiler results are off: 11.09 ms cpu latency and 27.33 ms GPU latency per image.
-
-```
-# batch size 1
-
-> python3 embed_sequence_profile.py 1000 1 0 1
-
-===== PERFORMANCE STATISTICS =====
-
------ Per Image Statistics -----
-Disk I/O time: 0.15 ms/image
-CPU processing time: 11.09 ms/image
-GPU transfer time: 0.42 ms/image
-GPU inference time: 27.33 ms/image
-Result writing time: 0.34 ms/image
-```
-## GPU inference latency for batch size 100 vs 1 is 50:1 as expected 0.67 ms/image vs 27.33 ms/image
 
 
 
-### The Bottleneck Revelation
+### The Bottleneck 
 
 **Figure 1** revealed the culprit: CPU-bound image loading and processing was throttling GPU performance. This created an unexpected outcome—batching, which is considered essential for training efficiency, provided only minimal speedup for inference.
 
@@ -97,33 +48,9 @@ Result writing time: 0.34 ms/image
 total latency = API latency/number of workers + max(GPU latency/number of GPUs, CPU latency/number of workers)
 ```
 
-## Experiments
-
-Run sequential benchmark test instructions:
-
-```
-> python3 embed_sequence.py 1 200
-
-cpu IO and processing latency=10.0ms 
-
-throughput=77.71 image/sec latency=12.9ms
-
-GPU inference latency (last cycle)=2.7ms
-
-```
-
- Run inference API instructions:
-```
-> python3 stress_api.py 10 100    10000
-
-> uv run uvicorn api.api:app --host 0.0.0.0 --port 8000 --reload
-
-> uv run celery -A worker.worker_embed  worker --loglevel=warning 
---concurrency=1000 --pool=gevent --autoscale=200,200
-```
 
 
-## The Solution: FastAPI with Task Brokering
+## Model Infrence API with FastAPI with Task Brokering
 
 Based on these insights, I developed an inference API built on FastAPI with Redis and Celery as the task broker. This architecture:
 
@@ -171,3 +98,106 @@ One of the most valuable aspects of this project was the close alignment between
 ### Source: https://derlin.github.io/introduction-to-fastapi-and-celery/03-celery/
 
 <img src="inf_fig4.jpg" width="800" height="400">
+
+## Run Inference API
+
+```
+cd serving
+
+# fastapi      
+uv run uvicorn api.api:app --host 0.0.0.0 --port 8000 --reload
+
+# celery taks brokers
+# 3x workers
+
+uv run celery -A worker.worker_embed  worker --loglevel=error --concurrency=1000 --pool=gevent --autoscale=200,300
+
+uv run celery -A worker.worker_embed  worker --loglevel=error --concurrency=1000 --pool=gevent --autoscale=200,300
+
+uv run celery -A worker.worker_embed  worker --loglevel=error --concurrency=1000 --pool=gevent --autoscale=200,300
+
+# 1000 requests
+python3 stress_api.py 10 100
+
+2025-04-04 10:31:38,961 - __main__ - INFO - done=10 (10) num_tasks_done=1000
+2025-04-04 10:31:38,961 - __main__ - INFO - done=10 throughput=123.53 image/sec latency=8.10 ms
+
+```
+
+## Pytorch Profiler Experiments
+
+Run sequential benchmark test instructions:
+```
+
+ # Instruction batch size=200:
+
+> python3 embed_sequence.py 1 200
+
+cpu IO and processing latency=10.0ms 
+throughput=77.71 image/sec latency=12.9ms
+GPU inference latency (last cycle)=2.7ms
+
+ # Instruction batch size=1:
+
+> python3 embed_sequence.py 200 1
+
+cpu IO and processing latency=2.8ms 
+done=200 throughput=70.70 image/sec latency=14.1ms
+GPU inference latency (last cycle)=5.1ms 
+```
+
+```
+# batch size 200
+
+> python3 embed_sequence.py 10 100 0 1
+
+----- Per Image Statistics -----
+GPU transfer time: 2.41 ms/image
+GPU inference time: 0.16 ms/image
+
+*** CPU processing latency=10.7ms/image
+```
+
+For batch size 1 pytorch profiler results are off: 11.09 ms cpu latency and 27.33 ms GPU warmup latency per image and 5.6 ms GPU render latency per image.
+
+A single GPU inference latency for batch size=100 vs batch size=1 is 50:1 as expected 0.67 ms/image vs 27.33 ms/image. 
+
+```
+# batch size 1
+
+> python3 embed_sequence.py 1000 1 0 0 1
+
+ *** GPU WARMUP render latency=180.5ms/image
+
+ *** GPU render latency=5.1 ms/image
+ 
+ ----- Per Image Statistics -----
+
+Disk I/O time: 0.07 ms/image
+CPU processing time: 7.99 ms/image
+GPU transfer time: 0.26 ms/image
+GPU inference time: 4.83 ms/image
+
+```
+
+
+```
+> python3 embed_sequence.py 1 200
+
+cpu IO and processing latency=10.0ms 
+
+throughput=77.71 image/sec latency=12.9ms
+
+GPU inference latency (last cycle)=2.7ms
+
+```
+
+ Run inference API instructions:
+```
+> python3 stress_api.py 10 100    10000
+
+> uv run uvicorn api.api:app --host 0.0.0.0 --port 8000 --reload
+
+> uv run celery -A worker.worker_embed  worker --loglevel=warning 
+--concurrency=1000 --pool=gevent --autoscale=200,200
+```
