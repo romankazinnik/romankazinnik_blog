@@ -12,7 +12,10 @@ In the world of machine learning deployment, serving models efficiently at scale
 
 My goal was straightforward but ambitious: create an API that pushes maximum possible throughput by fully utilizing allavailable resources, whether CPU cores or GPUs—whichever hits their limit first.
 
-### Initial Performance Analysis
+An interesting but expected discovery emerged: while GPUs could process batches of 200 images nearly as fast as a single image, this theoretical advantage wasn't materializing in practice. 
+
+
+### Performance Analysis
 
 My first task was benchmarking the sequential inference pipeline. I measured latencies across key components:
 
@@ -22,9 +25,63 @@ My first task was benchmarking the sequential inference pipeline. I measured lat
 - GPU single inference
 - GPU batched inference
 
-<img src="table1.jpg" width="500" height="400">  
+### Reproduce: 
+```
 
-An interesting but expected discovery emerged: while GPUs could process batches of 200 images nearly as fast as a single image, this theoretical advantage wasn't materializing in practice. 
+ # Instruction batch size=200:
+
+> python3 embed_sequence.py 1 200
+
+cpu IO and processing latency=10.0ms 
+throughput=77.71 image/sec latency=12.9ms
+GPU inference latency (last cycle)=2.7ms
+
+ # Instruction batch size=1:
+
+> python3 embed_sequence.py 200 1
+
+cpu IO and processing latency=2.8ms 
+done=200 throughput=70.70 image/sec latency=14.1ms
+GPU inference latency (last cycle)=5.1ms 
+```
+
+[comment]:  <img src="table1.jpg" width="500" height="400">  
+
+<img src="fig_table1_v2.jpg" width="300" height="200">  
+
+Ptorch profiler results are identical to the above results: 10ms cpu latency and 2.7 ms GPU latency per image.
+
+```
+# batch size 200
+
+> python3 embed_sequence_profile.py 100 200 0 1
+
+----- Per Image Statistics -----
+Disk I/O time: 0.08 ms/image
+CPU processing time: 8.97 ms/image
+GPU transfer time: 2.05 ms/image
+GPU inference time: 0.67 ms/image
+```
+
+For batch size 1 pytorch profiler results are off: 11.09 ms cpu latency and 27.33 ms GPU latency per image.
+
+```
+# batch size 1
+
+> python3 embed_sequence_profile.py 1000 1 0 1
+
+===== PERFORMANCE STATISTICS =====
+
+----- Per Image Statistics -----
+Disk I/O time: 0.15 ms/image
+CPU processing time: 11.09 ms/image
+GPU transfer time: 0.42 ms/image
+GPU inference time: 27.33 ms/image
+Result writing time: 0.34 ms/image
+```
+## GPU inference latency for batch size 100 vs 1 is 50:1 as expected 0.67 ms/image vs 27.33 ms/image
+
+
 
 ### The Bottleneck Revelation
 
