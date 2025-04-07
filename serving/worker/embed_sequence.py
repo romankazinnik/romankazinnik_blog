@@ -85,7 +85,6 @@ class EmbeddingsModel:
         self.model.to(self.device)
 
         self.gpu_total_time = 0
-        self.debug = False
         # Data transformation chain.
         self.transformation_chain = T.Compose(
             [
@@ -132,8 +131,7 @@ class EmbeddingsModel:
         
         self.gpu_total_time += time.time() - start_time
 
-        if not self.debug and self.device == "cuda":
-            embeddings = embeddings.cpu() 
+        embeddings = embeddings.cpu() 
             
         return embeddings
 
@@ -168,16 +166,13 @@ class EmbeddingsModel:
 
         embeddings_filename_list: List[str] = [f"{image_filename}.embeddings.pt" for image_filename in input_image_filename_list]
 
-        if self.debug:
-            # No device time
-            _  = self.process_batch_model(image_batch_transformed)
-        else:
-            # device and IO time 
-            embeddings: torch.Tensor = self.process_batch_model(image_batch_transformed)
-            self.process_write_results(embeddings, embeddings_filename_list)
-
+        # No device time
+        #    _  = self.process_batch_model(image_batch_transformed)
+        # device and IO time 
+        embeddings: torch.Tensor = self.process_batch_model(image_batch_transformed)
+        self.process_write_results(embeddings, embeddings_filename_list)
         return embeddings_filename_list
-# Example usage
+
 
 if __name__ == "__main__":
 
@@ -185,23 +180,18 @@ if __name__ == "__main__":
 
     num_requests = 10
     batch_size = 600
-    profile_mode = 0
-    EmbeddingsInference.debug = False
-
+    
     if len(sys.argv) != 4:
-        print("Usage:   python script.py num_requests batch_size debug profile_mode (0-off, 1-on, 2-gpu model only)")
-        print("Example: python script.py 10           500        0     0 (0-off, 1-on, 2-gpu model only, 3-gpu+to device, 4-cores only and no GPU)")
+        print("Usage:   python script.py num_requests batch_size ")
+        print("Example: python script.py 10 500 0")
     if len(sys.argv) > 1:
         num_requests = int(sys.argv[1])
     if len(sys.argv) > 2:
         batch_size = int(sys.argv[2])
-    if len(sys.argv) > 3:
-        EmbeddingsInference.debug = int(sys.argv[3])
-    if len(sys.argv) > 4:
-        profile_mode = int(sys.argv[4])
+
 
         
-    print(f"\n num_requests={num_requests} batch_size={batch_size} EmbeddingsInference.debug={EmbeddingsInference.debug}\n")
+    print(f"\n num_requests={num_requests} batch_size={batch_size}\n")
     
     # Replace with your directory path containing JPEG images
     images_path = "/home/roman/PycharmProjects/comfyui/celery-main/romankazinnik_blog/zillow/images/"
@@ -232,7 +222,7 @@ if __name__ == "__main__":
     
     print(f" cpu IO and processing latency={1000*(time.time()-start_time)/batch_size:.1f}ms \n")
     
-    #image_batch_transformed_gpu = image_batch_transformed_cpu.to(EmbeddingsInference.device)
+    # image_batch_transformed_gpu = image_batch_transformed_cpu.to(EmbeddingsInference.device)
     #embed_fn_list_gpu: List[str] = EmbeddingsInference.process_files_batch(jpeg_image_list,image_batch_transformed_gpu)
 
     EmbeddingsInference.gpu_total_time = 0
@@ -241,21 +231,9 @@ if __name__ == "__main__":
     
     for i in range(num_requests):
         if i % log_rate == 0: 
-            print(f"i={i}")
-        
-        if profile_mode == 0:
-            # (1) IO disc -> CPU mem -> device mem      
-            # entire cycle      
-            batch = fn_list[i*batch_size:(i+1)*batch_size]  
-            embed_fn_list: List[str] = EmbeddingsInference.process_files_batch(batch)        
-        elif profile_mode == 1:
-            # (2) CPU mem -> device mem -> inference -> CPU mem    
-            # without IO latency    
-            embed_fn_list: List[str] = EmbeddingsInference.process_files_batch(jpeg_image_list)
-        elif profile_mode == 2:
-            # GPUI-100% test: on device mem
-            embed_fn_list: List[str] = EmbeddingsInference.process_files_batch(jpeg_image_list,image_batch_transformed_gpu)
-        
+            print(f"i={i}")        
+        batch = fn_list[i*batch_size:(i+1)*batch_size]  
+        embed_fn_list: List[str] = EmbeddingsInference.process_files_batch(batch)        
         num_success += batch_size
 
     

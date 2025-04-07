@@ -96,7 +96,6 @@ class EmbeddingsModel:
         print(f"Model loaded in {self.model_load_time:.2f} seconds")
 
         self.gpu_total_time = 0
-        self.debug = False
         
         # Data transformation chain
         self.transformation_chain = T.Compose(
@@ -149,10 +148,9 @@ class EmbeddingsModel:
         self.gpu_total_time += inference_time
         self.perf_stats["gpu_inference_time"] += inference_time
 
-        if not self.debug and self.device == "cuda":
-            transfer_start = time.time()
-            embeddings = embeddings.cpu()
-            self.perf_stats["gpu_transfer_time"] += time.time() - transfer_start
+        transfer_start = time.time()
+        embeddings = embeddings.to('cpu') # cpu()
+        self.perf_stats["gpu_transfer_time"] += time.time() - transfer_start
             
         return embeddings
 
@@ -195,13 +193,10 @@ class EmbeddingsModel:
 
         embeddings_filename_list: List[str] = [f"{image_filename}.embeddings.pt" for image_filename in input_image_filename_list]
 
-        if self.debug:
-            # No device time
-            _ = self.process_batch_model(image_batch_transformed)
-        else:
-            # device and IO time 
-            embeddings: torch.Tensor = self.process_batch_model(image_batch_transformed)
-            self.process_write_results(embeddings, embeddings_filename_list)
+        # _ = self.process_batch_model(image_batch_transformed)
+        # device and IO time 
+        embeddings: torch.Tensor = self.process_batch_model(image_batch_transformed)
+        self.process_write_results(embeddings, embeddings_filename_list)
 
         return embeddings_filename_list
 
@@ -305,8 +300,6 @@ if __name__ == "__main__":
 
     num_requests = 10
     batch_size = 32  # Reduced for profiling
-    profile_mode = 0
-    EmbeddingsInference.debug = False
     use_pytorch_profiler = 0
 
     if len(sys.argv) > 1:
@@ -314,13 +307,9 @@ if __name__ == "__main__":
     if len(sys.argv) > 2:
         batch_size = int(sys.argv[2])
     if len(sys.argv) > 3:
-        profile_mode = int(sys.argv[3])
-    if len(sys.argv) > 4:
-        EmbeddingsInference.debug = int(sys.argv[4])
-    if len(sys.argv) > 5:
-        use_pytorch_profiler = int(sys.argv[5])
+        use_pytorch_profiler = int(sys.argv[3])
 
-    print(f"\n *** num_requests={num_requests} batch_size={batch_size} profile_mode={profile_mode} debug={EmbeddingsInference.debug} use_pytorch_profiler={use_pytorch_profiler}\n\n")
+    print(f"\n *** num_requests={num_requests} batch_size={batch_size} use_pytorch_profiler={use_pytorch_profiler}\n\n")
     
     # Replace with your directory path containing JPEG images
     images_path = "/home/roman/PycharmProjects/comfyui/celery-main/romankazinnik_blog/zillow/images/"
@@ -346,9 +335,6 @@ if __name__ == "__main__":
     jpeg_images = jpeg_images * repeat_factor
     fn_list = fn_list * repeat_factor
     
-    num_success = 0        
-    log_rate = max(1, int(num_requests/10))
-
     start_time = time.time()
     # (2) CPU mem -> device mem
     disk_io_start = time.time()
@@ -357,17 +343,17 @@ if __name__ == "__main__":
     
     # (3) CPU processing
     cpu_start = time.time()
-    image_batch_transformed_cpu = torch.stack([EmbeddingsInference.transformation_chain(image) for image in jpeg_image_list])
+    image_batch_transformed_cpu = torch.stack([EmbeddingsInference.transformation_chain(image) for image in jpeg_image_list]).to('cpu')
     cpu_time = time.time() - cpu_start
     
-    print(f"\n *** Disk I/O latency={1000*disk_io_time/batch_size:.1f}ms/image")
-    print(f"\n *** CPU processing latency={1000*cpu_time/batch_size:.1f}ms/image")
+    print(f"\n *** Disk I/O WARMUP latency={1000*disk_io_time/batch_size:.1f}ms/image")
+    print(f"\n *** CPU WARMUP processing latency={1000*cpu_time/batch_size:.1f}ms/image")
     
     # GPU transfer
     gpu_transfer_start = time.time()
     image_batch_transformed_gpu = image_batch_transformed_cpu.to(EmbeddingsInference.device)
     gpu_transfer_time = time.time() - gpu_transfer_start
-    print(f"\n *** GPU transfer latency={1000*gpu_transfer_time/batch_size:.1f}ms/image")
+    print(f"\n *** GPU WARMUP batch-tensor transfer latency={1000*gpu_transfer_time/batch_size:.1f}ms/image")
 
     gpu_render_start = time.time()
     _ = EmbeddingsInference.process_files_batch(jpeg_image_list, image_batch_transformed_gpu)
@@ -380,32 +366,23 @@ if __name__ == "__main__":
             gpu_render_start = time.time()
         _ = EmbeddingsInference.process_files_batch(jpeg_image_list, image_batch_transformed_gpu)
     gpu_render_time = time.time() - gpu_render_start
-    print(f"\n *** GPU render latency={1000*gpu_render_time/batch_size/10:.1f}ms/image\n")
+    print(f"\n *** GPU (10 requests) render latency={1000*gpu_render_time/batch_size/10:.1f}ms/image\n")
 
     EmbeddingsInference.gpu_total_time = 0
-    start_time = time.time()
     
+    num_success = 0        
+    log_rate = max(1, int(num_requests/10))
+    EmbeddingsInference = EmbeddingsModel()
+    start_time = time.time()
     for i in range(num_requests):
-        if i % log_rate == 0: 
-            print(f" *** Processing batch {i+1}/{num_requests}")
-        
-        if profile_mode == 0:
-            # (1) IO disc -> CPU mem -> device mem -> inference -> CPU mem
-            # entire cycle       
-            batch = fn_list[i*batch_size:(i+1)*batch_size]  
-            embed_fn_list = EmbeddingsInference.process_files_batch(batch)        
-        elif profile_mode == 1:
-            # (2) CPU mem -> device mem -> inference -> CPU mem    
-            # without IO latency    
-            embed_fn_list = EmbeddingsInference.process_files_batch(jpeg_image_list)
-        elif profile_mode == 2:
-            # GPUI-100% test: on device mem
-            embed_fn_list = EmbeddingsInference.process_files_batch(jpeg_image_list, image_batch_transformed_gpu)
-        
+        #if i % log_rate == 0: 
+        #    print(f" *** Processing batch {i+1}/{num_requests}")
+        batch = fn_list[i*batch_size:(i+1)*batch_size]  
+        embed_fn_list = EmbeddingsInference.process_files_batch(batch)                
         num_success += batch_size
 
     total_time = time.time() - start_time
-    print(f"Processed {num_success} images")
+    print(f"\n batch size={batch_size} \n Processed {num_success} images")
     print(f"Throughput: {num_success/total_time:.2f} images/sec")
     print(f"Average latency: {1000*total_time/num_success:.1f}ms/image")
     
