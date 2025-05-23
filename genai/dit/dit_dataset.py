@@ -72,7 +72,9 @@ def adjust_tensor_size(tensor, target_size=15):
         raise ValueError(f"Unknown tensor shape: {tensor.shape}")
         
 class LatentDataset(Dataset):
-    def __init__(self, latent_dir, text_embed_dir, latent_pattern = "*.jpg", text_embed_pattern = "*_llava_emb_44.npy", transform=None, return_tuple=['file_name','latent', 'text_embed','edge_embed'], embed_text_target_size=15):
+    def __init__(self, latent_dir, text_embed_dir, latent_pattern = "*.jpg", text_embed_pattern = "*_llava_emb_44.npy", 
+                 transform=None, 
+                 return_tuple=['file_name','latent', 'text_embed','edge_embed'], embed_text_target_size=15):
         
         self.latent_pattern = latent_pattern
         self.text_embed_pattern = text_embed_pattern
@@ -276,82 +278,58 @@ if __name__ == "__main__":
     # Setup data:
     if EDGEBAGS:
         nm = "edges2shoes" # edges2handbags
-        if False:
-            dataset_dir = f"/home/roman/PycharmProjects/jobs/dandy/pytorch-CycleGAN-and-pix2pix/datasets/{nm}/" # /class_A" #"."
-            latent_save_dir = f"/home/roman/PycharmProjects/jobs/dandy/pytorch-CycleGAN-and-pix2pix/datasets/{nm}_latent" # "."
-            latent_save_dir_right = latent_save_dir + "_right"
-            latent_save_dir_left = latent_save_dir + "_left"
 
     assert image_size % 8 == 0, "Image size must be divisible by 8 (for the VAE encoder)."
 
-    
+    path_root = f"/home/roman/PycharmProjects/jobs/dandy"
+    model_root = f"{path_root}/pytorch_tutorials/section09_generation/solutions"
+    data_root = f"{path_root}/pytorch-CycleGAN-and-pix2pix/datasets"
 
     if EDGEBAGS:
         # 512 x 256
         nm = "edges2shoes" # edges2handbags
-        #dataset_dir_train = f"/home/roman/PycharmProjects/jobs/dandy/pytorch-CycleGAN-and-pix2pix/datasets/{nm}/train" # /class_A" #"."
-        dataset_dir_train = f"/home/roman/PycharmProjects/jobs/dandy/pytorch-CycleGAN-and-pix2pix/datasets/{nm}/test" # /class_A" #"."
-        dataset_dir_test = f"/home/roman/PycharmProjects/jobs/dandy/pytorch-CycleGAN-and-pix2pix/datasets/{nm}/test_new_color" # /class_A" #"."
-        if False: # save separate directories for right and left images
-            latent_save_dir_right = f"{dataset_dir}_latent_right"
-            latent_save_dir_left = f"{dataset_dir}_latent_left"
-            os.makedirs(latent_save_dir_right, exist_ok=True)
-            os.makedirs(latent_save_dir_left, exist_ok=True)
-            dataset_right = ImageFolder(dataset_dir, transform=transform_right) # must havve class_A and class_B folders
-            dataset_left = ImageFolder(dataset_dir, transform=transform_left)
+        dataset_dir_train = f"{data_root}/{nm}/test" # /class_A" #"."
+        dataset_dir_test = f"{data_root}/{nm}/test_new_color" # /class_A" #"."
     else:    
-        dataset_dir = "/home/roman/PycharmProjects/jobs/dandy/pytorch_tutorials/datasets/CELEBA_HQ_256" 
-        latent_save_dir = "/home/roman/PycharmProjects/jobs/dandy/pytorch_tutorials/datasets/CELEBA_HQ_256_LATENT" 
+        dataset_dir = f"{data_root}/CELEBA_HQ_256" 
+        latent_save_dir = f"{data_root}/CELEBA_HQ_256_LATENT" 
         dataset = ImageFolder(dataset_dir, transform=transform)
-        
-    #if False:        
-    #    data_set_root = "/media/luke/Quick_Storage/Data/CelebAHQ/image_latents"        
-    #    trainset = LatentDataset(data_set_root)
-    #else:    
-    #    dir_latent = latent_save_dir_right
-    #     trainset = LatentDataset(dir_latent)# data_set_root)
-        
-
-    # Create latents for right and left images: save into SAME directory as _right.npy and _left.npy
 
     if True:
-        if True: # debug
-            num_workers = 1
-            pin_memory = False
+        # create latent for test and train jpg images
+        num_workers = 1
+        pin_memory = False
 
-            dataset_right = LatentDataset(latent_dir=dataset_dir_test, text_embed_dir=None, latent_pattern="*.jpg", transform=transform_right, return_tuple=['file_name','latent'])
-            dataset_left = LatentDataset(latent_dir=dataset_dir_test, text_embed_dir=None, latent_pattern="*.jpg",  transform=transform_left, return_tuple=['file_name','latent'])
-            print(f"{len(dataset_right)},{len(dataset_left)}")
+        dataset_right = LatentDataset(latent_dir=dataset_dir_test, text_embed_dir=None, latent_pattern="*.jpg", transform=transform_right, return_tuple=['file_name','latent'])
+        dataset_left = LatentDataset(latent_dir=dataset_dir_test, text_embed_dir=None, latent_pattern="*.jpg",  transform=transform_left, return_tuple=['file_name','latent'])
+        print(f"{len(dataset_right)},{len(dataset_left)}")
 
-            data_loader_left = DataLoader(dataset_left, batch_size=batch_size, shuffle=False, num_workers=num_workers, pin_memory=pin_memory)
-            data_loader_right = DataLoader(dataset_right, batch_size=batch_size, shuffle=False, num_workers=num_workers, pin_memory=pin_memory)
+        data_loader_left = DataLoader(dataset_left, batch_size=batch_size, shuffle=False, num_workers=num_workers, pin_memory=pin_memory)
+        data_loader_right = DataLoader(dataset_right, batch_size=batch_size, shuffle=False, num_workers=num_workers, pin_memory=pin_memory)
 
-            #dataiter_left = iter(data_loader_left)
-            #dataiter_right = iter(data_loader_right)
-            
-            #for ind, dataiter in enumerate([dataiter_left, dataset_right]):
-            for ind, dataloader in enumerate([data_loader_left, data_loader_right]):
-                dataiter = iter(dataloader)
-                images, file_names = next(dataiter) # images, labels = next(dataiter_left)
+        #for ind, dataiter in enumerate([dataiter_left, dataset_right]):
+        for ind, dataloader in enumerate([data_loader_left, data_loader_right]):
+            dataiter = iter(dataloader)
+            images, file_names = next(dataiter) # images, labels = next(dataiter_left)
 
-                print(f"image = {len(images)} {images.shape}")# labels= {labels.shape} {labels[:10]}")
+            print(f"image = {len(images)} {images.shape}")# labels= {labels.shape} {labels[:10]}")
 
-                fake_sample = images
-                plt.figure(figsize = (20, 10))
-                out = vutils.make_grid(fake_sample.detach().float().cpu(), nrow=8, normalize=True)
-                _ = plt.imshow(out.numpy().transpose((1, 2, 0)))
-                plt.axis('off')  # Hide the axes for cleaner visualization
-                plt.tight_layout()  # Adjust the padding
-                # plt.show()
-                plt.savefig(f'output_image_{ind}.png')  # Save to a file instead of showing
-                plt.close()  # Close the figure to free memory        
+            fake_sample = images
+            plt.figure(figsize = (20, 10))
+            out = vutils.make_grid(fake_sample.detach().float().cpu(), nrow=8, normalize=True)
+            _ = plt.imshow(out.numpy().transpose((1, 2, 0)))
+            plt.axis('off')  # Hide the axes for cleaner visualization
+            plt.tight_layout()  # Adjust the padding
+            # plt.show()
+            plt.savefig(f'output_image_{ind}.png')  # Save to a file instead of showing
+            plt.close()  # Close the figure to free memory        
 
-            x = images.to(device)
-            #with torch.cuda.amp.autocast():
-            with torch.amp.autocast("cuda:0"):    
-                # Map input images to latent space + normalize latents:
-                latent_features = vae.encode(x).latent_dist.sample().mul_(0.18215)
-                latent_features = latent_features.detach().cpu()  # (bs, 4, image_size//8, image_size//8)
+        x = images.to(device)
+        #with torch.cuda.amp.autocast():
+        with torch.amp.autocast("cuda:0"):    
+            # Map input images to latent space + normalize latents:
+            latent_features = vae.encode(x).latent_dist.sample().mul_(0.18215)
+            latent_features = latent_features.detach().cpu()  # (bs, 4, image_size//8, image_size//8)
 
         for dataset_dir in [dataset_dir_test, dataset_dir_train]:
             print(f"dataset_dir={dataset_dir.__len__}")
@@ -366,35 +344,35 @@ if __name__ == "__main__":
                 run(data_loader_left, latent_save_dir_left, suffix="_left")
 
         print(f"run_latent_generation: num_right={num_right} num_left={num_left} dataset_right={len(dataset_right)} dataset_left={len(dataset_left)}")
-        quit()
+    else:        
+        # 
+        # Test latents:
+        # Dataset: return latent npy, text_embed npy, ledt_image (edges) npy.
+        #
 
-    # 
-    # Dataset: return latent npy, text_embed npy, ledt_image (edges) npy.
-    #
+        # Example usage
+        # Create a sample tensor
+        x = 10  # Example value
+        sample_tensor = torch.randn(3, 7, x, 4096)
 
-    # Example usage
-    # Create a sample tensor
-    x = 10  # Example value
-    sample_tensor = torch.randn(3, 7, x, 4096)
+        # Adjust to target size
+        adjusted_tensor = adjust_tensor_size(sample_tensor)
+        print(f"Original shape: {sample_tensor.shape} Adjusted shape: {adjusted_tensor.shape}")
 
-    # Adjust to target size
-    adjusted_tensor = adjust_tensor_size(sample_tensor)
-    print(f"Original shape: {sample_tensor.shape} Adjusted shape: {adjusted_tensor.shape}")
-
-    # Try with x > 15
-    sample_tensor_large = torch.randn(3, 20, 4096)
-    adjusted_tensor_large = adjust_tensor_size(sample_tensor_large)
-    print(f"Original shape (large): {sample_tensor_large.shape} Adjusted shape (large): {adjusted_tensor_large.shape}")
+        # Try with x > 15
+        sample_tensor_large = torch.randn(3, 20, 4096)
+        adjusted_tensor_large = adjust_tensor_size(sample_tensor_large)
+        print(f"Original shape (large): {sample_tensor_large.shape} Adjusted shape (large): {adjusted_tensor_large.shape}")
 
 
 
-    dataset = LatentDataset(latent_dir=dataset_dir, text_embed_dir=dataset_dir, latent_pattern="*_embed_right.npy", text_embed_pattern="*_llava_emb_44.npy", transform=None, return_tuple=['text_embed','latent', 'edge_embed'])
-    print(len(dataset))
+        dataset = LatentDataset(latent_dir=dataset_dir, text_embed_dir=dataset_dir, latent_pattern="*_embed_right.npy", text_embed_pattern="*_llava_emb_44.npy", transform=None, return_tuple=['text_embed','latent', 'edge_embed'])
+        print(len(dataset))
 
-    # debug
-    data_loader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=1, pin_memory=False)
-    data_loader_iter = iter(data_loader)
-    latent, text_embed, edge_embed = next(data_loader_iter)
-    print(f"latent.shape={latent.shape} text_embed.shape={text_embed.shape} edge_embed.shape={edge_embed.shape}")
+        # debug
+        data_loader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=1, pin_memory=False)
+        data_loader_iter = iter(data_loader)
+        latent, text_embed, edge_embed = next(data_loader_iter)
+        print(f"latent.shape={latent.shape} text_embed.shape={text_embed.shape} edge_embed.shape={edge_embed.shape}")
     
     

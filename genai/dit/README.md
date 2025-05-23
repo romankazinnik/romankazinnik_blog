@@ -23,11 +23,11 @@ Here is the summary of the major drawbacks of text conditioning in GANs and how 
 Github: my work can be found in my [DiT-Text-Conditioning](https://github.com/romankazinnik/romankazinnik_blog/tree/master/genai/dit) repository.
 DiT: I used the original DiT code from the [Diffusion Transformer Luke Ditria](https://github.com/LukeDitriar) repository.
 
-Figure Architecture: Text-Conditioning in DiT
+### Figure Architecture: Text-Conditioning in DiT
 
 <figure>
   <img src="./images/text_dit_diagram.jpg" alt="DiT with Image Conditioning Architecture" width="700" height="1200">
-  <figcaption>DiT with Image Conditioning Architecture</figcaption>
+  <figcaption>DiT with Text Conditioning Architecture (This Model Has approximately 95 Million Parameters)</figcaption>
 </figure>
 
 
@@ -64,6 +64,15 @@ Training and inference results:
     op row third column: changing text "Black, sneaker, unisex" to "Red, sneaker, unisex" resulted in generating as a tottaly different shoe. 
     </figcaption>
 </figure>
+
+### Figure Architecture: Edges and Text-Conditioning in DiT
+
+Now I am adding edges to the text conditioning in DiT and compare the results with the original GAN pix2pix image generation.
+<figure>
+  <img src="./images/dit_edges_text_architecture.jpg" alt="DiT with Image Conditioning Architecture" width="700" height="1200">
+  <figcaption>DiT with Edge and Text Conditioning Architecture (This Model Has approximately 104 Million Parameters)</figcaption>
+</figure>
+
 
 ## Reproduce
 

@@ -151,13 +151,19 @@ class TransformerBlock(nn.Module):
             nn.Linear(hidden_size * 4, hidden_size)
         )
                 
-    def forward(self, x, features, text_embeddings=None):
+    def forward(self, x, features, text_embeddings=None, x_edge_latent=None):
         # Apply the first layer normalization
         norm_x = self.norm(x)
         
         # Apply multi-head attention and add the input (residual connection)
         x = self.multihead_attn(norm_x, norm_x, norm_x)[0] + x 
         
+        if x_edge_latent is not None:
+            norm_x_edge = self.norm(x_edge_latent)
+            x_edge_latent = self.multihead_attn(norm_x_edge, norm_x_edge, norm_x_edge)[0] + x_edge_latent 
+            norm_x = self.norm2_cross_attn(x)
+            x = self.cross_attn(norm_x, x_edge_latent, x_edge_latent)[0] + x
+
         # Apply cross-attention with text embeddings if provided
         if text_embeddings is not None:
             norm_x = self.norm2_cross_attn(x)
@@ -211,6 +217,7 @@ class DiT(nn.Module):
         
         seq_length = (image_size // patch_size) ** 2
         self.pos_embedding = nn.Parameter(torch.empty(1, seq_length, hidden_size).normal_(std=0.02))
+        self.pos_embedding_edge = nn.Parameter(torch.empty(1, seq_length, hidden_size).normal_(std=0.02))
         
         # Create multiple transformer blocks as layers
         self.blocks = nn.ModuleList([
@@ -219,7 +226,7 @@ class DiT(nn.Module):
         
         self.fc_out = nn.Linear(hidden_size, channels_in * patch_size * patch_size)
                 
-    def forward(self, image_in, index, text_embeddings=None):  
+    def forward(self, image_in, index, text_embeddings=None, image_in_edge=None):  
         # Get timestep embedding
         index_features = self.time_mlp(index) # [8, 128]
 
@@ -234,16 +241,26 @@ class DiT(nn.Module):
             projected_text = self.text_projector(text_embeddings.reshape(B * seq_len, -1)) # 120, 128
             projected_text = projected_text.reshape(B, seq_len, -1)  # 8,15,128 [B, seq_len, hidden_size]
 
+        # [1] Image latent 4,32,32 to set of pathes in hidden_size (=768) dimensions
         # Split input into patches
         patch_seq = extract_patches(image_in, patch_size=self.patch_size) # ([8, 256, 16]
         patch_emb = self.fc_in(patch_seq) # ([8, 256, 768]
-
         # Add a unique embedding to each token embedding
         embs = patch_emb + self.pos_embedding #  ([8, 256, 768]
         
+        embs_edge = None
+        if image_in_edge is not None:
+            # [2] same as 1: Edge image latent 4,32,32 to set of pathes in hidden_size (=768) dimensions
+            # Split input into patches
+            patch_seq_edge = extract_patches(image_in_edge, patch_size=self.patch_size) # ([8, 256, 16]
+            patch_emb_edge = self.fc_in(patch_seq_edge) # ([8, 256, 768]
+            # Add a unique embedding to each token embedding
+            embs_edge = patch_emb_edge + self.pos_embedding_edge #  ([8, 256, 768]
+
+
         # Pass the embeddings through each Transformer block
         for block in self.blocks:
-            embs = block(embs, index_features, projected_text)
+            embs = block(embs, index_features, projected_text, embs_edge)
         
         # Project to output
         image_out = self.fc_out(embs) # ch.Size([8, 256, 16])
@@ -261,7 +278,7 @@ def cosine_alphas_bar(timesteps, s=0.008):
 def noise_from_x0(curr_img, img_pred, alpha):
     return (curr_img - alpha.sqrt() * img_pred)/((1 - alpha).sqrt() + 1e-4)
 
-def cold_diffuse(diffusion_model, sample_in, total_steps, text_embeddings=None, start_step=0):
+def cold_diffuse(diffusion_model, sample_in, total_steps, text_embeddings=None, start_step=0, edge_latent_test=None):
     diffusion_model.eval()
     bs = sample_in.shape[0]
     alphas = torch.flip(cosine_alphas_bar(total_steps), (0,)).to(device)
@@ -270,7 +287,7 @@ def cold_diffuse(diffusion_model, sample_in, total_steps, text_embeddings=None, 
         for i in trange(start_step, total_steps - 1):
             index = (i * torch.ones(bs, device=sample_in.device)).long() # [8]
 
-            img_output = diffusion_model(random_sample, index, text_embeddings) #
+            img_output = diffusion_model(random_sample, index, text_embeddings, edge_latent_test)
 
             noise = noise_from_x0(random_sample, img_output, alphas[i])
             x0 = img_output
@@ -281,7 +298,7 @@ def cold_diffuse(diffusion_model, sample_in, total_steps, text_embeddings=None, 
             random_sample += rep2 - rep1
 
         index = ((total_steps - 1) * torch.ones(bs, device=sample_in.device)).long()
-        img_output = diffusion_model(random_sample, index, text_embeddings)
+        img_output = diffusion_model(random_sample, index, text_embeddings, edge_latent_test)
 
     return img_output
 
@@ -344,14 +361,14 @@ def validate_dit(total_steps, latent_size):
 
     return generated
 
-def fake(dit, text_embed_cpu, timesteps, latent_noise=None):
+def fake(dit, text_embed_cpu, timesteps, latent_noise=None, edge_latent_test=None):
     vae = AutoencoderKL.from_pretrained("stabilityai/sd-vae-ft-ema").to(device)
     if latent_noise is None:
         latent_noise = 0.95 * torch.randn(text_embed_cpu.shape[0], 4, latent_size, latent_size, device=device)
     with torch.no_grad():
         with torch.amp.autocast('cuda:0'):
         # with torch.cuda.amp.autocast():
-            fake_latents = cold_diffuse(dit, latent_noise, total_steps=timesteps, text_embeddings=text_embed_cpu)
+            fake_latents = cold_diffuse(dit, latent_noise, total_steps=timesteps, text_embeddings=text_embed_cpu, edge_latent_test=edge_latent_test)
             fake_sample = vae.decode(fake_latents / 0.18215).sample
     return fake_sample, latent_noise
     
@@ -442,14 +459,16 @@ if __name__ == "__main__":
     timesteps = 500 # total_steps = 500
     patch_size = 2
 
+    is_conditional =  'text_edges' # 'text' or 'text_edges' or None
 
     # non trained model!!!!
     if False:
         _ =validate_dit(timesteps, latent_size)
 
     nm = "edges2shoes" # edges2handbags
-    model_root = f"/home/roman/PycharmProjects/jobs/dandy/pytorch_tutorials/section09_generation/solutions"
-    data_root = f"/home/roman/PycharmProjects/jobs/dandy/pytorch-CycleGAN-and-pix2pix/datasets"
+    path_root = f"/home/roman/PycharmProjects/jobs/dandy"
+    model_root = f"{path_root}/pytorch_tutorials/section09_generation/solutions"
+    data_root = f"{path_root}/pytorch-CycleGAN-and-pix2pix/datasets"
     dataset_dir =          f"{data_root}/{nm}/train" 
     dataset_dir_test     = f"{data_root}/{nm}/test" 
     dataset_dir_test_red = f"{data_root}/{nm}/test_new_color" 
@@ -461,15 +480,15 @@ if __name__ == "__main__":
     print(len(trainset), len(testset), len(testset_red))
 
     # Sample from the itterable object
-    latents, text_embed, edge_embed = next(dataiter)
-    print(f"latents={latents.shape} latent_size={latent_size} text_embed={text_embed.shape} edge_embed={edge_embed.shape}")
+    latents, text_embed, edge_latent = next(dataiter)
+    print(f"latents={latents.shape} edge_latent={edge_latent.shape} text_embed={text_embed.shape} latent_size={latent_size} ")
 # Create a dataloader itterable object
     # Sample from the itterable object
     
     #_ = next(dataiter_test)
     #_ = next(dataiter_test_red)
-    latents_test, text_embed_test, edge_embed_test, file_name_test = next(dataiter_test)
-    latents_test_red, text_embed_test_red, edge_embed_test_red, file_name_test_red = next(dataiter_test_red)
+    latents_test, text_embed_test, edge_latent_test, file_name_test = next(dataiter_test)
+    latents_test_red, text_embed_test_red, edge_latent_test_red, file_name_test_red = next(dataiter_test_red)
     
     # read texts from file_name_test_red
     def read_text_from_file(file_name_list, dataset_dir_test):
@@ -506,20 +525,40 @@ if __name__ == "__main__":
 
 
     # fake_sample = show_latent_dit(dit, timesteps, latent_size, device)
-    checkpoint_fn = f"{model_root}/text_embed_latent_dit_100.pt"
+    if is_conditional == 'text_edges': # 'text'
+        checkpoint_fn = f"{model_root}/text_edges_embed_latent_dit_100.pt"
+        edge_latent_test_device = edge_latent_test.to(device)
+        output_fn_prefix = f"{model_root}/output_edges_image_test"
+    elif is_conditional == 'text':
+        checkpoint_fn = f"{model_root}/text_embed_latent_dit_100.pt"
+        edge_latent_test_device = None
+        output_fn_prefix = f"{model_root}/output_image_test"
+    elif is_conditional == None:
+        checkpoint_fn = f"{model_root}/latent_dit_100.pt"
+        edge_latent_test_device = None
+        output_fn_prefix = f"{model_root}/output_test"
+
     try:
         dit, optimizer, loss_log, start_epoch = load_model(f"{checkpoint_fn}", device=device)
+        # Plot loss
+        plt.figure(figsize = (20, 10))
+        plt.plot(loss_log[:])
+        plt.tight_layout()  # Adjust the padding
+        # plt.show()
+        plt.savefig(f'loss_log.png')  # Save to a file instead of showing
+        plt.close()  # Close the figure to free memory      
     except:
+        print(f"No model found at {checkpoint_fn}")
         start_epoch = 0
 
     print(f"norm diff {torch.norm(text_embed_test_red - text_embed_test)} norm text_embed_test_red={torch.norm(text_embed_test_red)} norm text_embed_test={torch.norm(text_embed_test)}")
-    fake_sample_100, latent_noise = fake(dit, text_embed_test_red.to(device), timesteps, latent_noise = None)
+    fake_sample_100, latent_noise = fake(dit, text_embed_test_red.to(device), timesteps, latent_noise = None, edge_latent_test = edge_latent_test_device)
 
     num_images = 8 # 12
-    save_image_title(start_epoch, fake_sample_100[:num_images], f"{model_root}/output_image_test_red_{start_epoch}.png", titles=text_list_test_red[:num_images])
+    save_image_title(start_epoch, fake_sample_100[:num_images], f"{output_fn_prefix}_red_{start_epoch}.png", titles=text_list_test_red[:num_images])
 
-    fake_sample_100, _ = fake(dit, text_embed_test.to(device), timesteps, latent_noise)
-    save_image_title(start_epoch, fake_sample_100[:num_images], f"{model_root}/output_image_test_{start_epoch}.png", titles=text_list_test[:num_images] )
+    fake_sample_100, _ = fake(dit, text_embed_test.to(device), timesteps, latent_noise=latent_noise, edge_latent_test = edge_latent_test_device)
+    save_image_title(start_epoch, fake_sample_100[:num_images], f"{output_fn_prefix}_{start_epoch}.png", titles=text_list_test[:num_images] )
 
     
     loss_log = []
@@ -540,10 +579,10 @@ if __name__ == "__main__":
         pbar.set_postfix_str('Loss: %.4f' % (mean_loss/len(train_loader)))
         mean_loss = 0
 
-        for num_iter, (latents, text_embed, edge_embed) in enumerate(tqdm(train_loader, leave=False)):
+        for num_iter, (latents, text_embed, edge_latents) in enumerate(tqdm(train_loader, leave=False)):
             latents = latents.to(device)
             text_embed = text_embed.to(device)
-            edge_embed = edge_embed.to(device)
+            edge_latents = edge_latents.to(device)
 
             #the size of the current minibatch
             bs = latents.shape[0]
@@ -557,7 +596,12 @@ if __name__ == "__main__":
             
             # with torch.cuda.amp.autocast():
             with torch.amp.autocast('cuda'):
-                latent_pred = dit(noise_input, rand_index, text_embed)
+                if is_conditional == 'text_edges':
+                    latent_pred = dit(noise_input, rand_index, text_embed, edge_latents)
+                elif is_conditional == 'text':
+                    latent_pred = dit(noise_input, rand_index, text_embed)
+                elif is_conditional == None:
+                    latent_pred = dit(noise_input, rand_index)
                 loss = F.l1_loss(latent_pred, latents)
             
             # Backpropagation
@@ -582,20 +626,5 @@ if __name__ == "__main__":
                     'model_state_dict': dit.state_dict(),
                     'optimizer_state_dict': optimizer.state_dict(),
                     }, checkpoint_fn)
-        
-
-    # Plot loss
-    plt.figure(figsize = (20, 10))
-    plt.plot(loss_log[:])
-    plt.tight_layout()  # Adjust the padding
-    # plt.show()
-    plt.savefig(f'loss_log.png')  # Save to a file instead of showing
-    plt.close()  # Close the figure to free memory          
-
-
-    fake_sample_100, latent_noise = fake(dit, text_embed_test_red.to(device), timesteps, latent_noise = None)
-    save_image(start_epoch, fake_sample_100, f"{model_root}/output_image_test_red_{start_epoch}.png")
-
-    fake_sample_100, _ = fake(dit, text_embed_test.to(device), timesteps, latent_noise)
-    save_image(start_epoch, fake_sample_100, f"{model_root}/output_image_test_{start_epoch}.png")  
+    quit()
 
