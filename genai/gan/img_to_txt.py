@@ -19,7 +19,7 @@ def init(is_cuda:bool=True):
             # gpu
             load_in_4bit=True,
             # load_in_8bit=True, #`.to` is not supported for `8-bit` bitsandbytes models. Please use the model as it is
-            use_flash_attention_2=True
+            # use_flash_attention_2=True
         ).to(device) # 0) # cuda
         # model = model.to(device)
     else:
@@ -136,9 +136,20 @@ def create_and_save_embedding(model, processor, device, text, model_name="llava-
         #print("Extracting embeddings directly from the language model")
         # Use the text tokens to get embeddings from the language model
         text_tokens = inputs.get('input_ids')
-        # Get embeddings from the language model's transformer
-        embeddings = model.language_model.model.embed_tokens(text_tokens)
-        embedding4 = embeddings.mean(dim=1).cpu().numpy()
+        embeddings, embedding4 = None, None
+        try:
+            # Get embeddings from the language model's transformer
+            embeddings = model.language_model.model.embed_tokens(text_tokens)
+            embedding4 = embeddings.mean(dim=1).cpu().numpy()
+        except Exception as e:
+            print(f"Error getting embeddings: {e}")
+        if embeddings is None:
+            try:
+                embeddings = model.language_model.embed_tokens(text_tokens)
+                embedding4 = embeddings.mean(dim=1).cpu().numpy()
+            except Exception as e:
+                print(f"Error getting embeddings: {e}")
+
         np.save(f"{output_file}_4.npy", embedding4)
         embedding44 = embeddings.cpu().numpy()
         np.save(f"{output_file}_44.npy", embedding44) # 11. 4096
@@ -183,14 +194,15 @@ if __name__ == "__main__":
     
     device, model, model_id, processor, conversation, prompt = init()    
     
-    fn="/home/roman/PycharmProjects/jobs/dandy/img2txt/cmp_b0001.png"
+    path_root = "/home/roman/PycharmProjects/jobs/dandy"
+    fn=f"{path_root}/pytorch-CycleGAN-and-pix2pix/datasets/edges2shoes/test_yellow/cmp_b0001.png"
 
-    fn1 = "./pytorch-CycleGAN-and-pix2pix/datasets/edges2shoes/train/9999_AB.jpg"
-    fn2 = "./pytorch-CycleGAN-and-pix2pix/datasets/edges2shoes/train/1_AB.jpg"
-    fn3 = "./pytorch-CycleGAN-and-pix2pix/datasets/edges2shoes/train/3852_AB.jpg" # women grey
-    fn4 = "./pytorch-CycleGAN-and-pix2pix/datasets/edges2shoes/train/3855_AB.jpg" # black dress women 
-    fn5 = "./pytorch-CycleGAN-and-pix2pix/datasets/edges2shoes/train/4902_AB.jpg" # blue dress women 
-    fn6 = "./pytorch-CycleGAN-and-pix2pix/datasets/edges2shoes/train/49002_AB.jpg" # leopard dress women 
+    fn1 = f"{path_root}/pytorch-CycleGAN-and-pix2pix/datasets/edges2shoes/train/9999_AB.jpg"
+    fn2 = f"{path_root}/pytorch-CycleGAN-and-pix2pix/datasets/edges2shoes/train/1_AB.jpg"
+    fn3 = f"{path_root}/pytorch-CycleGAN-and-pix2pix/datasets/edges2shoes/train/3852_AB.jpg" # women grey
+    fn4 = f"{path_root}/pytorch-CycleGAN-and-pix2pix/datasets/edges2shoes/train/3855_AB.jpg" # black dress women 
+    fn5 = f"{path_root}/pytorch-CycleGAN-and-pix2pix/datasets/edges2shoes/train/4902_AB.jpg" # blue dress women 
+    fn6 = f"{path_root}/pytorch-CycleGAN-and-pix2pix/datasets/edges2shoes/train/49002_AB.jpg" # leopard dress women 
     
 
     sample_text_list = []
@@ -212,5 +224,6 @@ if __name__ == "__main__":
             debug=True
         )
         embedding_list.append(embedding)       
+        print(f"sample_text={sample_text} done. Shape: {embedding.shape}")
     print(sample_text_list)
     #Example output: ['Brown, loafer, unisex.', 'Brown, dress shoe, men.', 'Gray, loafer, unisex.', 'Black, heel, women.', 'Blue, heel, women.', 'Brown, slip on, unisex.']

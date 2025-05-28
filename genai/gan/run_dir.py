@@ -1,11 +1,11 @@
 import os
 
 # Execute the function with the specified directory
-from img2txt003 import init, make_text, create_and_save_embedding
+from img_to_txt import init, make_text, create_and_save_embedding
 
 device, model, model_id, processor, conversation, prompt = init(is_cuda=False)    
     
-def create_text_files_for_pngs(directory, is_png_or_jpg):
+def create_text_files_for_pngs(directory, is_png_or_jpg, new_color=None):
     # Check if the directory exists
     if not os.path.exists(directory):
         print(f"Directory '{directory}' does not exist.")
@@ -43,15 +43,23 @@ def create_text_files_for_pngs(directory, is_png_or_jpg):
             print(f"\n----------\n{txt_path}, {base_name}, {emb_path_44}")
             processed_count += 1
             
-            if (os.path.isfile(txt_path) or os.path.exists(txt_file)) and (os.path.isfile(emb_path_44) or os.path.exists(emb_path_44)):
-                #continue
+            if (os.path.isfile(txt_path) or os.path.exists(txt_file)): #  and (os.path.isfile(emb_path_44) or os.path.exists(emb_path_44)):
+                # create embeddings for existing txt files
                 try:
                     with open(txt_path, 'r', encoding='utf-8') as file:
                         sample_text = file.read()
                 except Exception as e:
                     raise Exception(f"Error reading file: {txt_path}")      
-                print(f"{txt_path}={sample_text}")              
+                print(f"{txt_path}={sample_text}")    
+                if new_color is not None:          
+                    words = sample_text.split(',')
+                    assert words
+                    words[0] = new_color
+                sample_text = ','.join(words)
+                print(f"{txt_path}={sample_text}")    
+                 
             else:
+                # create txt file and embeddings 
                 sample_text = make_text(prompt, device, processor, model, fn=png_path) 
                 print(f"\n----------\n{sample_text}")        
                 # Write to the TXT file
@@ -76,6 +84,9 @@ def create_text_files_for_pngs(directory, is_png_or_jpg):
 
 
 if __name__ == "__main__":
-    directory = "./pytorch-CycleGAN-and-pix2pix/datasets/edges2shoes/test_new_color"    
-
-    create_text_files_for_pngs(directory, is_png_or_jpg=False)
+    path_root = "/home/roman/PycharmProjects/jobs/dandy"
+    edge_dir = f"{path_root}/pytorch-CycleGAN-and-pix2pix/datasets/edges2shoes"
+    directory = f"{edge_dir}/test_yellow"    
+    create_text_files_for_pngs(directory, is_png_or_jpg=False, new_color='Yellow')
+    directory = f"{edge_dir}/test_red"    
+    create_text_files_for_pngs(directory, is_png_or_jpg=False, new_color='Red')
