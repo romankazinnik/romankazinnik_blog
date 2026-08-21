@@ -1,0 +1,236 @@
+===== sweep 2026-08-20T18:35:11-07:00 targets: h1 h2 h3 h3b h4 h5 h6 duration: 120s
+### server --n-params 1e6 --seq-len 1
+model: P=826,113 (target 1,000,000) d=128 L=4 S=1 cuda mode=greedy
+calibrating T_batch(B) ms: {1: 0.929, 2: 0.943, 4: 0.94, 8: 0.936, 16: 0.938, 32: 1.013, 64: 1.005, 128: 1.015, 256: 1.013, 512: 1.187, 1024: 2.053, 2048: 3.759, 4096: 7.178}
+--- client h1_n1e6_s1 --qps 1000
+sending 19918 requests over 20.0s (qps=1000.0, peak=1000.0 for 5s/30s, seed=76114)
+PASS  sent=9950 failed=0 mismatch=0 lag_p99=0.05  p50=1.78 p99=3.31 max=6.02 ms (SLO 100)  B_mean=1.5 (pred 0.9)  cycle=1.18ms p99/cycle=2.8  u=0.002 F_eff=1.0T  p99_pred=2.37
+### server --n-params 1e7 --seq-len 1
+model: P=9,772,673 (target 10,000,000) d=448 L=4 S=1 cuda mode=greedy
+calibrating T_batch(B) ms: {1: 0.926, 2: 0.989, 4: 0.963, 8: 0.967, 16: 0.96, 32: 1.037, 64: 1.016, 128: 0.997, 256: 1.177, 512: 1.946, 1024: 3.486, 2048: 6.718, 4096: 11.228}
+--- client h1_n1e7_s1 --qps 1000
+sending 19896 requests over 20.0s (qps=1000.0, peak=1000.0 for 5s/30s, seed=76136)
+PASS  sent=9936 failed=0 mismatch=0 lag_p99=0.05  p50=1.80 p99=3.12 max=3.93 ms (SLO 100)  B_mean=1.5 (pred 0.9)  cycle=1.19ms p99/cycle=2.6  u=0.003 F_eff=7.6T  p99_pred=2.38
+### server --n-params 1e9 --seq-len 1
+model: P=992,509,569 (target 1,000,000,000) d=4544 L=4 S=1 cuda mode=greedy
+calibrating T_batch(B) ms: {1: 3.168, 2: 3.864, 4: 3.868, 8: 3.776, 16: 3.84, 32: 3.7, 64: 4.04, 128: 6.139, 256: 14.798, 512: 23.181, 1024: 41.925, 2048: 79.615, 4096: 159.218}
+--- client h1_n1e9_s1 --qps 1000
+sending 19876 requests over 20.0s (qps=1000.0, peak=1000.0 for 5s/30s, seed=76165)
+PASS  sent=10093 failed=0 mismatch=0 lag_p99=0.05  p50=6.36 p99=8.67 max=10.50 ms (SLO 100)  B_mean=4.1 (pred 3.3)  cycle=4.05ms p99/cycle=2.1  u=0.038 F_eff=52.2T  p99_pred=6.97
+### server --n-params 1e8 --seq-len 10 --max-batch 1024
+model: P=104,475,201 (target 100,000,000) d=1472 L=4 S=10 cuda mode=greedy
+calibrating T_batch(B) ms: {1: 0.954, 2: 1.016, 4: 1.01, 8: 1.118, 16: 1.763, 32: 2.741, 64: 4.035, 128: 7.085, 256: 11.139, 512: 22.068, 1024: 42.602}
+--- client h1_n1e8_s10 --qps 1000
+sending 19690 requests over 20.0s (qps=1000.0, peak=1000.0 for 5s/30s, seed=76189)
+PASS  sent=9919 failed=0 mismatch=0 lag_p99=0.05  p50=1.91 p99=3.48 max=5.15 ms (SLO 100)  B_mean=1.5 (pred 1.0)  cycle=1.24ms p99/cycle=2.8  u=0.040 F_eff=52.2T  p99_pred=2.46
+### server --n-params 1e8 --seq-len 100 --max-batch 256
+model: P=104,607,681 (target 100,000,000) d=1472 L=4 S=100 cuda mode=greedy
+calibrating T_batch(B) ms: {1: 1.15, 2: 2.478, 4: 3.056, 8: 4.352, 16: 7.221, 32: 13.025, 64: 25.018, 128: 47.858, 256: 95.616}
+--- client h1_n1e8_s100 --qps 1000
+sending 19794 requests over 20.0s (qps=1000.0, peak=1000.0 for 5s/30s, seed=76213)
+PASS  sent=9892 failed=0 mismatch=0 lag_p99=0.05  p50=4.67 p99=10.23 max=15.27 ms (SLO 100)  B_mean=2.6 (pred 1.8)  cycle=2.47ms p99/cycle=4.1  u=0.368 F_eff=57.5T  p99_pred=3.64
+### server --n-params 1e8 --seq-len 1
+model: P=104,461,953 (target 100,000,000) d=1472 L=4 S=1 cuda mode=greedy
+calibrating T_batch(B) ms: {1: 0.92, 2: 0.955, 4: 0.95, 8: 0.952, 16: 0.951, 32: 1.022, 64: 1.074, 128: 1.736, 256: 3.658, 512: 5.883, 1024: 8.817, 2048: 16.754, 4096: 32.722}
+--- client h2_q100 --qps 100
+sending 11969 requests over 120.0s (qps=100.0, peak=100.0 for 5s/30s, seed=76236)
+PASS  sent=11019 failed=0 mismatch=0 lag_p99=1.00  p50=2.13 p99=4.14 max=9.82 ms (SLO 100)  B_mean=1.0 (pred 0.1)  cycle=1.91ms p99/cycle=2.2  u=0.001 F_eff=27.5T  p99_pred=3.83
+--- client h2_q1000 --qps 1000
+sending 119671 requests over 120.0s (qps=1000.0, peak=1000.0 for 5s/30s, seed=76356)
+PASS  sent=109588 failed=0 mismatch=0 lag_p99=0.05  p50=1.75 p99=2.84 max=6.21 ms (SLO 100)  B_mean=1.5 (pred 0.9)  cycle=1.17ms p99/cycle=2.4  u=0.008 F_eff=27.5T  p99_pred=2.35
+--- client h2_q5000 --qps 5000
+sending 600554 requests over 120.0s (qps=5000.0, peak=5000.0 for 5s/30s, seed=76477)
+PASS  sent=550424 failed=0 mismatch=0 lag_p99=0.03  p50=2.26 p99=3.19 max=7.86 ms (SLO 100)  B_mean=6.8 (pred 4.8)  cycle=1.36ms p99/cycle=2.4  u=0.038 F_eff=27.5T  p99_pred=2.76
+### server --n-params 1e8 --seq-len 10 --max-batch 512
+model: P=104,475,201 (target 100,000,000) d=1472 L=4 S=10 cuda mode=greedy
+calibrating T_batch(B) ms: {1: 0.952, 2: 1.021, 4: 1.014, 8: 1.12, 16: 1.767, 32: 2.741, 64: 4.039, 128: 7.092, 256: 11.305, 512: 22.406}
+--- client h3_s10 --qps 1000
+sending 120611 requests over 120.0s (qps=1000.0, peak=1000.0 for 5s/30s, seed=76601)
+PASS  sent=110541 failed=0 mismatch=0 lag_p99=0.04  p50=1.86 p99=2.95 max=4.79 ms (SLO 100)  B_mean=1.5 (pred 1.0)  cycle=1.23ms p99/cycle=2.4  u=0.041 F_eff=51.6T  p99_pred=2.42
+### server --n-params 1e8 --seq-len 30 --max-batch 512
+model: P=104,504,641 (target 100,000,000) d=1472 L=4 S=30 cuda mode=greedy
+calibrating T_batch(B) ms: {1: 1.031, 2: 1.025, 4: 1.135, 8: 2.459, 16: 3.036, 32: 5.063, 64: 8.431, 128: 15.814, 256: 31.584, 512: 60.435}
+--- client h3_s30 --qps 1000
+sending 120520 requests over 120.0s (qps=1000.0, peak=1000.0 for 5s/30s, seed=76725)
+PASS  sent=110449 failed=0 mismatch=0 lag_p99=0.04  p50=1.93 p99=3.75 max=7.52 ms (SLO 100)  B_mean=1.6 (pred 1.2)  cycle=1.28ms p99/cycle=2.9  u=0.116 F_eff=54.1T  p99_pred=2.90
+### server --n-params 1e8 --seq-len 50 --max-batch 512
+model: P=104,534,081 (target 100,000,000) d=1472 L=4 S=50 cuda mode=greedy
+calibrating T_batch(B) ms: {1: 1.024, 2: 1.135, 4: 2.455, 8: 2.982, 16: 4.437, 32: 7.358, 64: 13.068, 128: 25.206, 256: 48.665, 512: 97.209}
+--- client h3_s50 --qps 1000
+sending 120184 requests over 120.0s (qps=1000.0, peak=1000.0 for 5s/30s, seed=76849)
+PASS  sent=110241 failed=0 mismatch=0 lag_p99=0.04  p50=2.55 p99=5.60 max=10.23 ms (SLO 100)  B_mean=1.8 (pred 1.3)  cycle=1.53ms p99/cycle=3.7  u=0.188 F_eff=56.0T  p99_pred=3.49
+### server --n-params 1e8 --seq-len 60 --max-batch 512
+model: P=104,548,801 (target 100,000,000) d=1472 L=4 S=60 cuda mode=greedy
+calibrating T_batch(B) ms: {1: 1.019, 2: 1.144, 4: 2.461, 8: 2.997, 16: 4.992, 32: 7.812, 64: 15.336, 128: 30.65, 256: 58.858, 512: 116.897}
+--- client h3_s60 --qps 1000
+sending 119765 requests over 120.0s (qps=1000.0, peak=1000.0 for 5s/30s, seed=76975)
+PASS  sent=109839 failed=0 mismatch=0 lag_p99=0.05  p50=2.55 p99=5.51 max=12.27 ms (SLO 100)  B_mean=1.8 (pred 1.3)  cycle=1.52ms p99/cycle=3.6  u=0.226 F_eff=55.9T  p99_pred=3.61
+### server --n-params 1e8 --seq-len 65 --max-batch 512
+model: P=104,556,161 (target 100,000,000) d=1472 L=4 S=65 cuda mode=greedy
+calibrating T_batch(B) ms: {1: 1.124, 2: 1.743, 4: 2.673, 8: 3.854, 16: 5.226, 32: 8.856, 64: 17.04, 128: 33.487, 256: 69.904, 512: 131.26}
+--- client h3_s65 --qps 1000
+sending 119893 requests over 120.0s (qps=1000.0, peak=1000.0 for 5s/30s, seed=77100)
+PASS  sent=109866 failed=0 mismatch=0 lag_p99=0.04  p50=3.39 p99=7.54 max=11.28 ms (SLO 100)  B_mean=2.1 (pred 1.5)  cycle=1.89ms p99/cycle=4.0  u=0.255 F_eff=53.6T  p99_pred=3.42
+### server --n-params 1e6 --seq-len 10 --max-batch 256
+model: P=827,265 (target 1,000,000) d=128 L=4 S=10 cuda mode=greedy
+calibrating T_batch(B) ms: {1: 0.949, 2: 1.009, 4: 1.008, 8: 1.005, 16: 0.999, 32: 1.013, 64: 1.008, 128: 0.954, 256: 0.952}
+--- client h3b_n1e6_s10 --qps 1000
+sending 120725 requests over 120.0s (qps=1000.0, peak=1000.0 for 5s/30s, seed=77223)
+PASS  sent=110612 failed=0 mismatch=0 lag_p99=0.04  p50=1.83 p99=2.91 max=4.72 ms (SLO 100)  B_mean=1.5 (pred 0.9)  cycle=1.21ms p99/cycle=2.4  u=-0.000 F_eff=-58.1T  p99_pred=2.30
+### server --n-params 1e6 --seq-len 100 --max-batch 256
+model: P=838,785 (target 1,000,000) d=128 L=4 S=100 cuda mode=greedy
+calibrating T_batch(B) ms: {1: 1.028, 2: 1.025, 4: 1.02, 8: 1.015, 16: 0.958, 32: 0.956, 64: 1.013, 128: 1.536, 256: 2.635}
+--- client h3b_n1e6_s100 --qps 1000
+sending 120352 requests over 120.0s (qps=1000.0, peak=1000.0 for 5s/30s, seed=77345)
+PASS  sent=110355 failed=0 mismatch=0 lag_p99=0.04  p50=1.90 p99=3.03 max=5.96 ms (SLO 100)  B_mean=1.5 (pred 1.0)  cycle=1.27ms p99/cycle=2.4  u=0.008 F_eff=24.1T  p99_pred=2.56
+### server --n-params 1e6 --seq-len 200 --max-batch 256
+model: P=851,585 (target 1,000,000) d=128 L=4 S=200 cuda mode=greedy
+calibrating T_batch(B) ms: {1: 1.03, 2: 1.018, 4: 1.011, 8: 0.949, 16: 0.936, 32: 1.013, 64: 1.634, 128: 2.801, 256: 5.249}
+--- client h3b_n1e6_s200 --qps 1000
+sending 120287 requests over 120.0s (qps=1000.0, peak=1000.0 for 5s/30s, seed=77468)
+PASS  sent=110171 failed=0 mismatch=0 lag_p99=0.05  p50=1.89 p99=2.99 max=5.17 ms (SLO 100)  B_mean=1.5 (pred 1.0)  cycle=1.26ms p99/cycle=2.4  u=0.019 F_eff=22.4T  p99_pred=2.60
+### server --n-params 1e6 --seq-len 300 --max-batch 256
+model: P=864,385 (target 1,000,000) d=128 L=4 S=300 cuda mode=greedy
+calibrating T_batch(B) ms: {1: 1.048, 2: 1.014, 4: 0.962, 8: 0.954, 16: 1.007, 32: 1.424, 64: 2.681, 128: 4.681, 256: 8.235}
+--- client h3b_n1e6_s300 --qps 1000
+sending 119669 requests over 120.0s (qps=1000.0, peak=1000.0 for 5s/30s, seed=77590)
+PASS  sent=109696 failed=0 mismatch=0 lag_p99=0.05  p50=1.88 p99=2.97 max=6.18 ms (SLO 100)  B_mean=1.5 (pred 1.1)  cycle=1.27ms p99/cycle=2.3  u=0.030 F_eff=23.5T  p99_pred=2.69
+### server --n-params 1e6 --seq-len 400 --max-batch 256
+model: P=877,185 (target 1,000,000) d=128 L=4 S=400 cuda mode=greedy
+calibrating T_batch(B) ms: {1: 1.049, 2: 1.012, 4: 0.954, 8: 0.953, 16: 1.161, 32: 1.999, 64: 3.51, 128: 6.638, 256: 12.881}
+--- client h3b_n1e6_s400 --qps 1000
+sending 120321 requests over 120.0s (qps=1000.0, peak=1000.0 for 5s/30s, seed=77713)
+PASS  sent=110394 failed=0 mismatch=0 lag_p99=0.04  p50=1.89 p99=2.96 max=6.39 ms (SLO 100)  B_mean=1.5 (pred 1.1)  cycle=1.27ms p99/cycle=2.3  u=0.049 F_eff=21.2T  p99_pred=2.75
+### server --n-params 1e7 --seq-len 10 --max-batch 256
+model: P=9,776,705 (target 10,000,000) d=448 L=4 S=10 cuda mode=greedy
+calibrating T_batch(B) ms: {1: 0.972, 2: 1.045, 4: 1.028, 8: 1.012, 16: 1.015, 32: 1.032, 64: 1.031, 128: 1.295, 256: 2.162}
+--- client h3b_n1e7_s10 --qps 1000
+sending 119573 requests over 120.0s (qps=1000.0, peak=1000.0 for 5s/30s, seed=77835)
+PASS  sent=109562 failed=0 mismatch=0 lag_p99=0.05  p50=1.86 p99=3.04 max=7.88 ms (SLO 100)  B_mean=1.5 (pred 1.0)  cycle=1.22ms p99/cycle=2.5  u=0.005 F_eff=37.1T  p99_pred=2.32
+### server --n-params 1e7 --seq-len 100 --max-batch 256
+model: P=9,817,025 (target 10,000,000) d=448 L=4 S=100 cuda mode=greedy
+calibrating T_batch(B) ms: {1: 1.002, 2: 1.017, 4: 1.025, 8: 1.038, 16: 1.116, 32: 2.117, 64: 3.726, 128: 7.162, 256: 13.804}
+--- client h3b_n1e7_s100 --qps 1000
+sending 119859 requests over 120.0s (qps=1000.0, peak=1000.0 for 5s/30s, seed=77957)
+PASS  sent=109750 failed=0 mismatch=0 lag_p99=0.05  p50=1.89 p99=3.08 max=7.68 ms (SLO 100)  B_mean=1.5 (pred 1.1)  cycle=1.25ms p99/cycle=2.5  u=0.052 F_eff=38.9T  p99_pred=2.61
+### server --n-params 1e7 --seq-len 200 --max-batch 256
+model: P=9,861,825 (target 10,000,000) d=448 L=4 S=200 cuda mode=greedy
+calibrating T_batch(B) ms: {1: 1.031, 2: 1.041, 4: 1.051, 8: 1.158, 16: 2.191, 32: 3.855, 64: 7.336, 128: 12.987, 256: 25.705}
+--- client h3b_n1e7_s200 --qps 1000
+sending 120325 requests over 120.0s (qps=1000.0, peak=1000.0 for 5s/30s, seed=78081)
+PASS  sent=110365 failed=0 mismatch=0 lag_p99=0.04  p50=1.93 p99=3.07 max=6.27 ms (SLO 100)  B_mean=1.6 (pred 1.1)  cycle=1.28ms p99/cycle=2.4  u=0.097 F_eff=43.7T  p99_pred=2.80
+### server --n-params 1e7 --seq-len 300 --max-batch 256
+model: P=9,906,625 (target 10,000,000) d=448 L=4 S=300 cuda mode=greedy
+calibrating T_batch(B) ms: {1: 1.05, 2: 1.049, 4: 1.065, 8: 1.629, 16: 3.02, 32: 5.709, 64: 10.128, 128: 20.306, 256: 39.925}
+--- client h3b_n1e7_s300 --qps 1000
+sending 120337 requests over 120.0s (qps=1000.0, peak=1000.0 for 5s/30s, seed=78204)
+PASS  sent=110523 failed=0 mismatch=0 lag_p99=0.04  p50=1.99 p99=3.32 max=7.62 ms (SLO 100)  B_mean=1.6 (pred 1.2)  cycle=1.30ms p99/cycle=2.5  u=0.154 F_eff=42.9T  p99_pred=3.08
+### server --n-params 1e7 --seq-len 400 --max-batch 256
+model: P=9,951,425 (target 10,000,000) d=448 L=4 S=400 cuda mode=greedy
+calibrating T_batch(B) ms: {1: 1.071, 2: 1.051, 4: 1.251, 8: 2.357, 16: 4.178, 32: 7.993, 64: 14.122, 128: 27.959, 256: 55.254}
+--- client h3b_n1e7_s400 --qps 1000
+sending 119751 requests over 120.0s (qps=1000.0, peak=1000.0 for 5s/30s, seed=78328)
+PASS  sent=109882 failed=0 mismatch=0 lag_p99=0.04  p50=2.01 p99=3.78 max=6.79 ms (SLO 100)  B_mean=1.6 (pred 1.4)  cycle=1.32ms p99/cycle=2.9  u=0.212 F_eff=42.9T  p99_pred=3.40
+### server --n-params 1e9 --seq-len 3 --max-batch 512
+model: P=992,518,657 (target 1,000,000,000) d=4544 L=4 S=3 cuda mode=greedy
+calibrating T_batch(B) ms: {1: 3.895, 2: 3.911, 4: 3.932, 8: 3.658, 16: 3.677, 32: 6.154, 64: 9.894, 128: 15.129, 256: 29.307, 512: 56.159}
+--- client h3b_n1e9_s3 --qps 1000
+sending 119875 requests over 120.0s (qps=1000.0, peak=1000.0 for 5s/30s, seed=78454)
+PASS  sent=109973 failed=0 mismatch=0 lag_p99=0.05  p50=6.18 p99=8.28 max=12.90 ms (SLO 100)  B_mean=4.0 (pred 4.3)  cycle=4.01ms p99/cycle=2.1  u=0.105 F_eff=57.0T  p99_pred=8.87
+### server --n-params 1e9 --seq-len 5 --max-batch 512
+model: P=992,527,745 (target 1,000,000,000) d=4544 L=4 S=5 cuda mode=greedy
+calibrating T_batch(B) ms: {1: 3.901, 2: 3.925, 4: 3.64, 8: 3.699, 16: 6.74, 32: 8.666, 64: 14.683, 128: 29.518, 256: 46.444, 512: 90.891}
+--- client h3b_n1e9_s5 --qps 1000
+sending 120105 requests over 120.0s (qps=1000.0, peak=1000.0 for 5s/30s, seed=78582)
+PASS  sent=110097 failed=0 mismatch=0 lag_p99=0.05  p50=6.21 p99=10.41 max=15.75 ms (SLO 100)  B_mean=4.0 (pred 4.7)  cycle=4.00ms p99/cycle=2.6  u=0.166 F_eff=59.7T  p99_pred=10.21
+### server --n-params 1e9 --seq-len 7 --max-batch 512
+model: P=992,536,833 (target 1,000,000,000) d=4544 L=4 S=7 cuda mode=greedy
+calibrating T_batch(B) ms: {1: 3.911, 2: 3.931, 4: 3.665, 8: 3.764, 16: 6.146, 32: 13.364, 64: 19.737, 128: 34.163, 256: 66.122, 512: 126.512}
+--- client h3b_n1e9_s7 --qps 1000
+sending 119593 requests over 120.0s (qps=1000.0, peak=1000.0 for 5s/30s, seed=78710)
+PASS  sent=109820 failed=0 mismatch=0 lag_p99=0.05  p50=6.29 p99=10.62 max=14.05 ms (SLO 100)  B_mean=4.1 (pred 5.1)  cycle=4.04ms p99/cycle=2.6  u=0.239 F_eff=58.1T  p99_pred=11.28
+### server --n-params 1e9 --seq-len 10 --max-batch 512
+model: P=992,550,465 (target 1,000,000,000) d=4544 L=4 S=10 cuda mode=greedy
+calibrating T_batch(B) ms: {1: 3.92, 2: 3.641, 4: 3.603, 8: 6.027, 16: 8.612, 32: 14.372, 64: 29.109, 128: 45.799, 256: 89.288, 512: 173.988}
+--- client h3b_n1e9_s10 --qps 1000
+sending 119642 requests over 120.0s (qps=1000.0, peak=1000.0 for 5s/30s, seed=78839)
+PASS  sent=109675 failed=0 mismatch=0 lag_p99=0.06  p50=10.48 p99=18.71 max=31.22 ms (SLO 100)  B_mean=6.2 (pred 5.8)  cycle=6.24ms p99/cycle=3.0  u=0.327 F_eff=60.7T  p99_pred=12.28
+### server --n-params 1e7 --seq-len 1000 --max-batch 64
+model: P=10,220,225 (target 10,000,000) d=448 L=4 S=1000 cuda mode=greedy
+calibrating T_batch(B) ms: {1: 1.032, 2: 1.534, 4: 2.663, 8: 5.477, 16: 10.725, 32: 19.454, 64: 39.374}
+--- client h1_n1e7_s1000 --qps 50
+sending 1043 requests over 20.0s (qps=50.0, peak=50.0 for 5s/30s, seed=78963)
+PASS  sent=538 failed=0 mismatch=0 lag_p99=1.03  p50=2.38 p99=4.57 max=5.05 ms (SLO 100)  B_mean=1.0 (pred 0.1)  cycle=2.15ms p99/cycle=2.1  u=0.030 F_eff=45.9T  p99_pred=4.43
+### server --n-params 1e8 --seq-len 1000 --max-batch 64
+model: P=105,932,481 (target 100,000,000) d=1472 L=4 S=1000 cuda mode=greedy
+calibrating T_batch(B) ms: {1: 5.616, 2: 9.912, 4: 17.4, 8: 34.63, 16: 67.596, 32: 133.371, 64: 265.066}
+--- client h1_n1e8_s1000 --qps 50
+sending 1005 requests over 20.0s (qps=50.0, peak=50.0 for 5s/30s, seed=78991)
+PASS  sent=498 failed=0 mismatch=0 lag_p99=1.04  p50=6.28 p99=24.91 max=39.09 ms (SLO 100)  B_mean=1.0 (pred 0.4)  cycle=6.18ms p99/cycle=4.0  u=0.206 F_eff=57.2T  p99_pred=15.57
+### server --n-params 1e8 --seq-len 1 --max-wait-ms 20
+model: P=104,461,953 (target 100,000,000) d=1472 L=4 S=1 cuda mode=window 20.0ms
+calibrating T_batch(B) ms: {1: 0.905, 2: 0.946, 4: 0.941, 8: 0.94, 16: 0.935, 32: 1.011, 64: 1.071, 128: 1.737, 256: 3.662, 512: 5.192, 1024: 8.808, 2048: 16.609, 4096: 32.736}
+--- client h4_w20_s1 --qps 1000
+sending 120176 requests over 120.0s (qps=1000.0, peak=1000.0 for 5s/30s, seed=79015)
+PASS  sent=110102 failed=0 mismatch=0 lag_p99=0.05  p50=13.43 p99=23.17 max=24.36 ms (SLO 100)  B_mean=21.1 (pred 20.0)  cycle=2.46ms p99/cycle=9.4  u=0.008 F_eff=27.1T  p99_pred=22.51
+### server --n-params 1e8 --seq-len 1 --max-wait-ms 50
+model: P=104,461,953 (target 100,000,000) d=1472 L=4 S=1 cuda mode=window 50.0ms
+calibrating T_batch(B) ms: {1: 0.912, 2: 0.947, 4: 0.932, 8: 0.935, 16: 0.928, 32: 1.004, 64: 1.07, 128: 1.733, 256: 3.653, 512: 5.884, 1024: 8.738, 2048: 16.603, 4096: 32.476}
+--- client h4_w50_s1 --qps 1000
+sending 120267 requests over 120.0s (qps=1000.0, peak=1000.0 for 5s/30s, seed=79138)
+PASS  sent=110303 failed=0 mismatch=0 lag_p99=0.05  p50=28.66 p99=52.91 max=54.71 ms (SLO 100)  B_mean=51.2 (pred 50.0)  cycle=2.97ms p99/cycle=17.8  u=0.008 F_eff=27.8T  p99_pred=53.19
+### server --n-params 1e8 --seq-len 50 --max-wait-ms 2 --max-batch 512
+model: P=104,534,081 (target 100,000,000) d=1472 L=4 S=50 cuda mode=window 2.0ms
+calibrating T_batch(B) ms: {1: 1.02, 2: 1.133, 4: 2.456, 8: 2.982, 16: 4.438, 32: 7.362, 64: 12.929, 128: 25.025, 256: 48.266, 512: 95.919}
+--- client h4_w2_s50 --qps 1000
+sending 120383 requests over 120.0s (qps=1000.0, peak=1000.0 for 5s/30s, seed=79262)
+PASS  sent=110375 failed=0 mismatch=0 lag_p99=0.05  p50=4.26 p99=6.02 max=8.76 ms (SLO 100)  B_mean=3.2 (pred 2.0)  cycle=2.14ms p99/cycle=2.8  u=0.185 F_eff=56.8T  p99_pred=3.39
+### server --n-params 1e8 --seq-len 1
+model: P=104,461,953 (target 100,000,000) d=1472 L=4 S=1 cuda mode=greedy
+calibrating T_batch(B) ms: {1: 0.917, 2: 0.955, 4: 0.957, 8: 0.956, 16: 0.947, 32: 1.022, 64: 1.072, 128: 1.737, 256: 3.651, 512: 5.217, 1024: 8.873, 2048: 16.859, 4096: 32.96}
+--- client h5_s1_peak5x --qps 1000 --qps-peak 5000
+sending 199879 requests over 120.0s (qps=1000.0, peak=5000.0 for 5s/30s, seed=79386)
+PASS  sent=169840 failed=0 mismatch=0 lag_p99=0.04  p50=1.99 p99=3.02 max=6.23 ms (SLO 100)  B_mean=2.3 (pred 0.9)  cycle=1.19ms p99/cycle=2.5  u=0.008 F_eff=26.9T  p99_pred=2.33
+### server --n-params 1e8 --seq-len 30 --max-batch 512
+model: P=104,504,641 (target 100,000,000) d=1472 L=4 S=30 cuda mode=greedy
+calibrating T_batch(B) ms: {1: 1.027, 2: 1.017, 4: 1.136, 8: 2.458, 16: 3.032, 32: 5.063, 64: 8.524, 128: 15.353, 256: 30.904, 512: 58.987}
+--- client h5_s30_peak2x --qps 1000 --qps-peak 2000
+sending 139862 requests over 120.0s (qps=1000.0, peak=2000.0 for 5s/30s, seed=79510)
+PASS  sent=124830 failed=0 mismatch=0 lag_p99=0.04  p50=2.04 p99=5.01 max=6.65 ms (SLO 100)  B_mean=1.8 (pred 1.2)  cycle=1.31ms p99/cycle=3.8  u=0.113 F_eff=55.6T  p99_pred=2.98
+### server --device cpu --n-params 1e7 --seq-len 1 --max-batch 1
+model: P=9,772,673 (target 10,000,000) d=448 L=4 S=1 cpu mode=greedy
+calibrating T_batch(B) ms: {1: 3.284}
+--- client h6_cpu_b1_q100 --qps 100
+sending 12023 requests over 120.0s (qps=100.0, peak=100.0 for 5s/30s, seed=79633)
+PASS  sent=11025 failed=0 mismatch=0 lag_p99=0.93  p50=4.94 p99=18.84 max=50.00 ms (SLO 100)  B_mean=1.0 (pred inf)  cycle=4.44ms p99/cycle=4.2  u=nan F_eff=nanT  p99_pred=inf
+--- client h6_cpu_b1_q300 --qps 300
+sending 36354 requests over 120.0s (qps=300.0, peak=300.0 for 5s/30s, seed=79753)
+FAIL  sent=33208 failed=33208 mismatch=0 lag_p99=0.12  p50=1000.00 p99=1000.00 max=1000.00 ms (SLO 100)  B_mean=1.0 (pred inf)  cycle=3.76ms p99/cycle=266.1  u=nan F_eff=nanT  p99_pred=inf
+--- client h6_cpu_b1_q1000 --qps 1000
+sending 118848 requests over 120.0s (qps=1000.0, peak=1000.0 for 5s/30s, seed=79874)
+FAIL  sent=108929 failed=108929 mismatch=0 lag_p99=0.07  p50=1000.00 p99=1000.00 max=1000.00 ms (SLO 100)  B_mean=1.0 (pred inf)  cycle=3.77ms p99/cycle=265.4  u=nan F_eff=nanT  p99_pred=inf
+### server --device cpu --n-params 1e7 --seq-len 1 --max-batch 4096
+model: P=9,772,673 (target 10,000,000) d=448 L=4 S=1 cpu mode=greedy
+calibrating T_batch(B) ms: {1: 3.37, 2: 1.603, 4: 1.932, 8: 2.373, 16: 3.226, 32: 4.658, 64: 7.657, 128: 13.19, 256: 23.839, 512: 48.457, 1024: 94.309, 2048: 187.065, 4096: 359.673}
+--- client h6_cpu_batched_q1000 --qps 1000
+sending 119578 requests over 120.0s (qps=1000.0, peak=1000.0 for 5s/30s, seed=80006)
+PASS  sent=109641 failed=0 mismatch=0 lag_p99=0.05  p50=4.25 p99=7.33 max=10.76 ms (SLO 100)  B_mean=2.9 (pred 3.7)  cycle=2.83ms p99/cycle=2.6  u=0.087 F_eff=0.2T  p99_pred=9.36
+### server --device cpu --n-params 1e7 --seq-len 10 --max-batch 102
+model: P=9,776,705 (target 10,000,000) d=448 L=4 S=10 cpu mode=greedy
+calibrating T_batch(B) ms: {1: 2.718, 2: 3.61, 4: 5.392, 8: 8.933, 16: 15.834, 32: 29.434, 64: 56.817}
+--- client h6_cpu_calib_s10 --qps 10
+sending 200 requests over 20.0s (qps=10.0, peak=10.0 for 5s/30s, seed=80129)
+PASS  sent=86 failed=0 mismatch=0 lag_p99=1.17  p50=5.37 p99=8.06 max=9.01 ms (SLO 100)  B_mean=1.0 (pred 0.0)  cycle=5.05ms p99/cycle=1.6  u=0.009 F_eff=0.2T  p99_pred=10.19
+### server --device cpu --n-params 1e7 --seq-len 100 --max-batch 10
+model: P=9,817,025 (target 10,000,000) d=448 L=4 S=100 cpu mode=greedy
+calibrating T_batch(B) ms: {1: 10.91, 2: 19.708, 4: 37.717, 8: 77.327}
+--- client h6_cpu_calib_s100 --qps 10
+sending 188 requests over 20.0s (qps=10.0, peak=10.0 for 5s/30s, seed=80152)
+PASS  sent=89 failed=0 mismatch=0 lag_p99=0.96  p50=18.71 p99=43.79 max=45.19 ms (SLO 100)  B_mean=1.0 (pred 0.1)  cycle=18.20ms p99/cycle=2.4  u=0.095 F_eff=0.2T  p99_pred=40.22
+### server --device cpu --n-params 1e7 --seq-len 1000 --max-batch 8
+model: P=10,220,225 (target 10,000,000) d=448 L=4 S=1000 cpu mode=greedy
+calibrating T_batch(B) ms: {1: 124.083, 2: 288.358, 4: 581.579, 8: 1236.468}
+--- client h6_cpu_calib_s1000 --qps 10
+sending 166 requests over 20.0s (qps=10.0, peak=10.0 for 5s/30s, seed=80198)
+FAIL  sent=85 failed=85 mismatch=0 lag_p99=1.16  p50=1000.00 p99=1000.00 max=1000.00 ms (SLO 100)  B_mean=8.0 (pred inf)  cycle=1257.06ms p99/cycle=0.8  u=1.584 F_eff=0.2T  p99_pred=inf
+===== done 2026-08-20T19:43:40-07:00
