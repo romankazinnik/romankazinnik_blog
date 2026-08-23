@@ -1,6 +1,6 @@
 # Batching + GPU 102: Measuring the Formulas
 
-*Companion to [Batching + GPU 101](./Batching_GPU_101.docx). Code, design notes and raw results: `server.py`, `client.py`, `sweep.sh`, `plot.py`, `benchmark_design.md`, `tracker.csv` in this folder.*
+*Companion to [Medium blog Batching + GPU 101](https://roman-kazinnik.medium.com/batching-gpu-101-how-one-gpu-replaces-hundreds-of-cpu-nodes-6c8897bc2d13?postPublishedType=repub). Code, design notes and raw results: `server.py`, `client.py`, `sweep.sh`, `plot.py`, `benchmark_design.md`, `tracker.csv` in this folder.*
 
 Part 1 claimed that a handful of formulas — per-batch time `T_batch(B) ≈ a + k·B`, utilization `u = λ·k`, and the greedy-drain fixed point `p99 ≈ 2·a_eff/(1 − u)` — are enough to size a GPU serving fleet. This post checks them with a small client–server benchmark on an RTX 3070 (fp16) and a 4-thread CPU, across four decades of model size (1M–1B parameters), sequence lengths 1–1000, arrival rates 50–5000 requests/s, two batching policies, and bursty traffic. All numbers below are read from the five figures; nothing is fitted except the two calibration constants `a` and `k`, which the server measures at startup.
 
